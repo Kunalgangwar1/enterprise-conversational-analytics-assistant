@@ -32,6 +32,7 @@ from app.llm.exceptions import LLMError
 from app.nlp2sql.exceptions import NLP2SQLError
 from app.nlp2sql.multihop.exceptions import MultiHopError
 from app.routing.exceptions import RoutingError
+from app.security.rate_limit import enforce_rate_limit
 from app.semantica.exceptions import SemanticaError
 from app.sessions.exceptions import SessionStoreError
 
@@ -48,6 +49,7 @@ ChatPrincipal = Annotated[
     responses={
         400: {"model": APIErrorResponse},
         409: {"model": APIErrorResponse},
+        429: {"model": APIErrorResponse},
         500: {"model": APIErrorResponse},
         503: {"model": APIErrorResponse},
     },
@@ -60,6 +62,7 @@ def chat(
 ) -> ChatResponse:
     """Execute one tab-isolated turn and persist only user-facing conversation state."""
 
+    enforce_rate_limit(request, principal, "chat")
     settings, resolved = resolve_request_identity(request, principal)
     service = get_session_service(request)
     try:

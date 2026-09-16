@@ -70,6 +70,10 @@ EMAIL_PATTERN = re.compile(
     r"(?![A-Za-z0-9_%+\-])"
 )
 PHONE_PATTERN = re.compile(r"(?<!\w)(?:\+1[ .\-]?)?(?:\(\d{3}\)|\d{3})[ .\-]\d{3}[ .\-]\d{4}(?!\w)")
+CREDENTIAL_PATTERN = re.compile(
+    r"(?i)(?:\bbearer\s+[A-Za-z0-9._~+/=-]{8,}|"
+    r"\b(?:api[_-]?key|access[_-]?token|password)\s*[:=]\s*[^\s,;]+)"
+)
 
 
 def detect_identifiers(text: str) -> tuple[IdentifierMatch, ...]:

@@ -1,12 +1,10 @@
 """Thin privacy and error boundary for Data Quality guidance."""
 
-from typing import Annotated
-
 from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel, ConfigDict, StringConstraints
+from pydantic import BaseModel, ConfigDict
 
 from app.api.errors import APIError, APIErrorResponse
-from app.auth.dependencies import require_permission
+from app.auth.dependencies import CurrentPrincipal, require_permission
 from app.auth.permissions import Permission
 from app.data_quality.agent import DataQualityAgent
 from app.data_quality.exceptions import DataQualityError
@@ -14,6 +12,8 @@ from app.data_quality.factory import build_data_quality_agent
 from app.data_quality.models import DataQualityResult
 from app.llm.exceptions import LLMError
 from app.privacy import PrivacyProcessor, ResponseUnmasker
+from app.security.rate_limit import enforce_rate_limit
+from app.security.request_limits import UserQuestion
 
 router = APIRouter(
     prefix="/data-quality",
@@ -24,17 +24,24 @@ router = APIRouter(
 
 class DataQualityQuery(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    question: Annotated[
-        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4_000)
-    ]
+    question: UserQuestion
 
 
 @router.post(
     "/query",
     response_model=DataQualityResult,
-    responses={500: {"model": APIErrorResponse}, 503: {"model": APIErrorResponse}},
+    responses={
+        429: {"model": APIErrorResponse},
+        500: {"model": APIErrorResponse},
+        503: {"model": APIErrorResponse},
+    },
 )
-def query_data_quality(payload: DataQualityQuery, request: Request) -> DataQualityResult:
+def query_data_quality(
+    payload: DataQualityQuery,
+    request: Request,
+    principal: CurrentPrincipal,
+) -> DataQualityResult:
+    enforce_rate_limit(request, principal, "data_quality")
     privacy = PrivacyProcessor().process(payload.question)
     try:
         result = _get_agent(request).answer(privacy.safe_text)

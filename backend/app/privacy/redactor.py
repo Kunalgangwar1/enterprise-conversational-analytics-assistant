@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from app.privacy.detectors import EMAIL_PATTERN, PHONE_PATTERN
+from app.privacy.detectors import CREDENTIAL_PATTERN, EMAIL_PATTERN, PHONE_PATTERN
 from app.privacy.spans import ReplacementSpan, apply_replacements
 
 
@@ -26,9 +26,17 @@ class PIIRedactor:
         )
 
         phone_matches = tuple(PHONE_PATTERN.finditer(email_safe_text))
-        safe_text = apply_replacements(
+        phone_safe_text = apply_replacements(
             email_safe_text,
             [ReplacementSpan(match.start(), match.end(), "[PHONE]") for match in phone_matches],
+        )
+        credential_matches = tuple(CREDENTIAL_PATTERN.finditer(phone_safe_text))
+        safe_text = apply_replacements(
+            phone_safe_text,
+            [
+                ReplacementSpan(match.start(), match.end(), "[CREDENTIAL]")
+                for match in credential_matches
+            ],
         )
         return RedactionResult(
             safe_text=safe_text,

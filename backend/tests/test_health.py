@@ -13,8 +13,4 @@ def test_health_endpoint_returns_service_status() -> None:
         response = client.get("/api/health")
 
     assert response.status_code == 200
-    payload = response.json()
-    assert payload["status"] == "ok"
-    assert payload["service"] == "Test Analytics API"
-    assert payload["environment"] == "test"
-    assert set(payload) == {"status", "service", "environment"}
+    assert response.json() == {"status": "ok"}

@@ -4,6 +4,8 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.errors import register_api_error_handlers
 from app.api.router import api_router
@@ -16,6 +18,9 @@ from app.dashboards.service import DashboardService
 from app.data_discovery.search import DataDiscoveryService
 from app.data_quality.agent import DataQualityAgent
 from app.knowledge_catalog.agent import KnowledgeCatalogAgent
+from app.security.headers import SecurityHeadersMiddleware
+from app.security.rate_limit import RateLimiter, build_rate_limiter
+from app.security.request_limits import RequestBodyLimitMiddleware
 from app.semantica.agent import SemanticaAgent
 from app.sessions.factory import build_session_store
 from app.sessions.service import SessionService
@@ -34,22 +39,28 @@ def create_app(
     chat_orchestrator: ChatOrchestrator | None = None,
     dashboard_service: DashboardService | None = None,
     authentication_backend: AuthenticationBackend | None = None,
+    rate_limiter: RateLimiter | None = None,
 ) -> FastAPI:
     """Create and configure the FastAPI application."""
     resolved_settings = settings or get_settings()
     resolved_session_store = session_store or build_session_store(resolved_settings)
+    resolved_rate_limiter = rate_limiter or build_rate_limiter(resolved_settings)
 
     @asynccontextmanager
     async def lifespan(_application: FastAPI) -> AsyncIterator[None]:
         try:
             yield
         finally:
+            resolved_rate_limiter.close()
             resolved_session_store.close()
 
     application = FastAPI(
         title=resolved_settings.app_name,
         version="0.1.0",
         lifespan=lifespan,
+        docs_url="/docs" if resolved_settings.api_docs_enabled else None,
+        redoc_url="/redoc" if resolved_settings.api_docs_enabled else None,
+        openapi_url="/openapi.json" if resolved_settings.api_docs_enabled else None,
     )
     application.state.settings = resolved_settings
     authorization_service = AuthorizationService()
@@ -61,6 +72,7 @@ def create_app(
             authorization_service,
         )
     )
+    application.state.rate_limiter = resolved_rate_limiter
     application.state.session_service = SessionService(
         resolved_session_store,
         chat_mode_registry,
@@ -74,6 +86,33 @@ def create_app(
     application.state.dashboard_service = dashboard_service
     application.include_router(api_router)
     register_api_error_handlers(application)
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=resolved_settings.cors_allowed_origins,
+        allow_credentials=resolved_settings.cors_allow_credentials,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=[
+            "Accept",
+            "Authorization",
+            "Content-Type",
+            resolved_settings.tab_id_header,
+        ],
+        expose_headers=["Retry-After"],
+    )
+    application.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=resolved_settings.allowed_hosts,
+    )
+    application.add_middleware(
+        RequestBodyLimitMiddleware,
+        max_body_bytes=resolved_settings.request_max_body_bytes,
+    )
+    application.add_middleware(
+        SecurityHeadersMiddleware,
+        enabled=resolved_settings.security_headers_enabled,
+        hsts_enabled=resolved_settings.hsts_enabled,
+        hsts_max_age_seconds=resolved_settings.hsts_max_age_seconds,
+    )
     return application
 
 

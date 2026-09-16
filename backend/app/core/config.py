@@ -7,6 +7,8 @@ from typing import Literal, Self
 from pydantic import Field, PostgresDsn, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.security.production_policy import validate_production_security
+
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -43,12 +45,36 @@ class Settings(BaseSettings):
     app_host: str = "127.0.0.1"
     app_port: int = Field(default=8000, ge=1, le=65_535)
     log_level: str = "INFO"
-    database_url: PostgresDsn = PostgresDsn(
-        "postgresql+psycopg://postgres@localhost:5432/enterprise_analytics"
+    cors_allowed_origins: list[str] = Field(
+        default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"]
     )
-    test_database_url: PostgresDsn | None = None
-    query_database_url: PostgresDsn | None = None
-    query_test_database_url: PostgresDsn | None = None
+    cors_allow_credentials: bool = True
+    allowed_hosts: list[str] = Field(
+        default_factory=lambda: ["localhost", "127.0.0.1", "testserver"]
+    )
+    request_max_body_bytes: int = Field(default=65_536, ge=1_024, le=1_048_576)
+    security_headers_enabled: bool = True
+    hsts_enabled: bool = False
+    hsts_max_age_seconds: int = Field(default=31_536_000, ge=1)
+    api_docs_enabled: bool = True
+    rate_limit_enabled: bool = True
+    rate_limit_backend: Literal["memory", "redis"] = "memory"
+    rate_limit_requests: int = Field(default=30, ge=1, le=10_000)
+    rate_limit_window_seconds: int = Field(default=60, ge=1, le=86_400)
+    rate_limit_redis_url: SecretStr | None = None
+    rate_limit_redis_key_prefix: str = Field(
+        default="eca:rate",
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9:_-]+$",
+    )
+    database_url: PostgresDsn = Field(
+        default=PostgresDsn("postgresql+psycopg://postgres@localhost:5432/enterprise_analytics"),
+        repr=False,
+    )
+    test_database_url: PostgresDsn | None = Field(default=None, repr=False)
+    query_database_url: PostgresDsn | None = Field(default=None, repr=False)
+    query_test_database_url: PostgresDsn | None = Field(default=None, repr=False)
     query_max_rows: int = Field(default=500, ge=1)
     query_timeout_ms: int = Field(default=5_000, ge=1)
     dashboard_top_n: int = Field(default=10, ge=1, le=50)
@@ -133,6 +159,16 @@ class Settings(BaseSettings):
         path = Path(value).expanduser()
         return path if path.is_absolute() else _REPOSITORY_ROOT / path
 
+    @field_validator("cors_allowed_origins", "allowed_hosts")
+    @classmethod
+    def normalize_security_allowlists(cls, values: list[str]) -> list[str]:
+        """Normalize exact configured values and reject blank entries."""
+
+        normalized = list(dict.fromkeys(value.strip() for value in values))
+        if any(not value for value in normalized):
+            raise ValueError("security allowlists cannot contain blank values")
+        return normalized
+
     @model_validator(mode="after")
     def validate_knowledge_chunk_settings(self) -> Self:
         """Ensure deterministic chunk overlap cannot consume a whole chunk."""
@@ -202,6 +238,25 @@ class Settings(BaseSettings):
 
         if self.session_store_backend == "redis" and self.session_redis_url is None:
             raise ValueError("SESSION_REDIS_URL is required when SESSION_STORE_BACKEND=redis")
+        return self
+
+    @model_validator(mode="after")
+    def validate_rate_limit_settings(self) -> Self:
+        """Require a dedicated Redis URL only when shared limiting is enabled."""
+
+        if (
+            self.rate_limit_enabled
+            and self.rate_limit_backend == "redis"
+            and self.rate_limit_redis_url is None
+        ):
+            raise ValueError("RATE_LIMIT_REDIS_URL is required when RATE_LIMIT_BACKEND=redis")
+        return self
+
+    @model_validator(mode="after")
+    def validate_production_policy(self) -> Self:
+        """Apply centralized fail-closed production security policy."""
+
+        validate_production_security(self)
         return self
 
 

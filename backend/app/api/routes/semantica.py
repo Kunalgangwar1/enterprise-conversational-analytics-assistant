@@ -1,17 +1,17 @@
 """Thin privacy and error boundary for Semantica retrieval."""
 
-from typing import Annotated
-
 from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel, ConfigDict, StringConstraints
+from pydantic import BaseModel, ConfigDict
 
 from app.api.errors import APIError, APIErrorResponse
-from app.auth.dependencies import require_permission
+from app.auth.dependencies import CurrentPrincipal, require_permission
 from app.auth.permissions import Permission
 from app.knowledge_catalog.exceptions import EmbeddingError, KnowledgeIndexError
 from app.knowledge_catalog.models import KnowledgeCatalogResult
 from app.llm.exceptions import LLMError
 from app.privacy import PrivacyProcessor, ResponseUnmasker
+from app.security.rate_limit import enforce_rate_limit
+from app.security.request_limits import UserQuestion
 from app.semantica.agent import SemanticaAgent
 from app.semantica.exceptions import SemanticaError
 from app.semantica.factory import build_semantica_agent
@@ -25,17 +25,24 @@ router = APIRouter(
 
 class SemanticaQuery(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    question: Annotated[
-        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4_000)
-    ]
+    question: UserQuestion
 
 
 @router.post(
     "/query",
     response_model=KnowledgeCatalogResult,
-    responses={500: {"model": APIErrorResponse}, 503: {"model": APIErrorResponse}},
+    responses={
+        429: {"model": APIErrorResponse},
+        500: {"model": APIErrorResponse},
+        503: {"model": APIErrorResponse},
+    },
 )
-def query_semantica(payload: SemanticaQuery, request: Request) -> KnowledgeCatalogResult:
+def query_semantica(
+    payload: SemanticaQuery,
+    request: Request,
+    principal: CurrentPrincipal,
+) -> KnowledgeCatalogResult:
+    enforce_rate_limit(request, principal, "semantica")
     privacy = PrivacyProcessor().process(payload.question)
     try:
         result = _get_agent(request).answer(privacy.safe_text)

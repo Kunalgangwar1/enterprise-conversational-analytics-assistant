@@ -4,7 +4,7 @@ from enum import StrEnum
 from typing import Annotated, Literal, TypeAlias
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.auth.group_access import GroupAccessResult
 from app.core.chat_modes import ChatModeKey
@@ -13,10 +13,7 @@ from app.forecasting.models import ForecastResult
 from app.nlp2sql.multihop.models import DeltaAnnotation, SynthesisTable
 from app.privacy.models import TokenMappingEntry
 from app.routing.models import InternalRoute
-
-NonBlankMessage = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4_000)
-]
+from app.security.request_limits import ChatMessageText, CustomContextText
 
 
 class SQLStrategy(StrEnum):
@@ -29,9 +26,9 @@ class SQLStrategy(StrEnum):
 class ChatRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    message: NonBlankMessage
+    message: ChatMessageText
     sql_strategy: SQLStrategy | None = None
-    custom_context: Annotated[str, StringConstraints(max_length=8_000)] | None = None
+    custom_context: CustomContextText | None = None
 
 
 class ChatCitation(BaseModel):

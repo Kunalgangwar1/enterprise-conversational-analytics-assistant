@@ -13,6 +13,7 @@ from app.knowledge_catalog.models import (
 from app.knowledge_catalog.retriever import KnowledgeCatalogRetriever
 from app.llm.base import LLMClient
 from app.llm.models import LLMMessage, LLMRequest, LLMRole
+from app.security.prompt_boundary import secure_system_prompt, untrusted_content
 
 NO_EVIDENCE_ANSWER = (
     "I couldn't find enough information in the Knowledge Catalog to answer that question."
@@ -51,11 +52,17 @@ class KnowledgeCatalogAgent:
         generated = self._llm_client_factory().generate_structured(
             LLMRequest(
                 messages=[
-                    LLMMessage(role=LLMRole.SYSTEM, content=_ANSWER_SYSTEM_PROMPT),
-                    LLMMessage(role=LLMRole.USER, content=f"Question:\n{safe_question}"),
+                    LLMMessage(
+                        role=LLMRole.SYSTEM,
+                        content=secure_system_prompt(_ANSWER_SYSTEM_PROMPT),
+                    ),
                     LLMMessage(
                         role=LLMRole.USER,
-                        content=f"BEGIN KNOWLEDGE CATALOG EVIDENCE\n{context}\nEND EVIDENCE",
+                        content=untrusted_content("user question", safe_question),
+                    ),
+                    LLMMessage(
+                        role=LLMRole.USER,
+                        content=untrusted_content("knowledge catalog evidence", context),
                     ),
                 ],
                 temperature=0,

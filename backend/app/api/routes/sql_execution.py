@@ -21,6 +21,7 @@ from app.db.query.exceptions import (
     QueryValidationError,
 )
 from app.nlp2sql.models import SQLValidationDecision
+from app.security.rate_limit import enforce_rate_limit
 from app.sessions.exceptions import SessionStoreError
 from app.sql_results.exceptions import SQLNotValidatedError, SQLTokenResolutionError
 from app.sql_results.factory import build_sql_execution_service
@@ -40,6 +41,7 @@ SQLPrincipal = Annotated[
     response_model=SQLAnalyticsResult,
     responses={
         409: {"model": APIErrorResponse},
+        429: {"model": APIErrorResponse},
         500: {"model": APIErrorResponse},
         503: {"model": APIErrorResponse},
         504: {"model": APIErrorResponse},
@@ -52,6 +54,7 @@ def execute_sql(
 ) -> SQLAnalyticsResult:
     """Execute only the accepted SQL stored by trusted server-side orchestration."""
 
+    enforce_rate_limit(request, principal, "execute_sql")
     settings, resolved = resolve_request_identity(request, principal)
     try:
         state = get_session_service(request).get_or_create(resolved.identity)

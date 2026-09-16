@@ -68,14 +68,28 @@ def test_domain_prompt_contains_only_compact_domain_metadata(
 ) -> None:
     _, fake = _select(metadata_registry, ["claims"])
     request = fake.requests[0]
+    instruction = request.messages[0]
     grounding = request.messages[1]
+    question = request.messages[2]
 
-    assert request.messages[0].role is LLMRole.SYSTEM
-    assert grounding.role is LLMRole.SYSTEM
-    assert request.messages[2].role is LLMRole.USER
-    assert request.messages[2].content == "Show total paid claims by specialty."
-    assert "claims:" in grounding.content
-    assert "provider_network:" in grounding.content
-    assert "TABLE claims" not in grounding.content
-    assert "paid_amount" not in grounding.content
-    assert "Columns:" not in grounding.content
+    assert instruction.role is LLMRole.SYSTEM
+    assert "Select the minimum set of business domains" in instruction.content
+
+    assert grounding.role is LLMRole.USER
+    assert grounding.content.startswith("BEGIN_UNTRUSTED_APPLICATION_GROUNDING\n")
+    assert grounding.content.endswith("\nEND_UNTRUSTED_APPLICATION_GROUNDING")
+
+    compact_metadata = grounding.content.removeprefix(
+        "BEGIN_UNTRUSTED_APPLICATION_GROUNDING\n"
+    ).removesuffix("\nEND_UNTRUSTED_APPLICATION_GROUNDING")
+    expected_lines = ["AVAILABLE DOMAINS:"]
+    for domain in sorted(metadata_registry.list_domains(), key=lambda item: item.name):
+        aliases = ", ".join(sorted(domain.aliases)) if domain.aliases else "none"
+        expected_lines.append(f"- {domain.name}: {domain.description} | aliases: {aliases}")
+    assert compact_metadata.splitlines() == expected_lines
+
+    assert question.role is LLMRole.USER
+    assert "Show total paid claims by specialty." in question.content
+    assert "TABLE claims" not in compact_metadata
+    assert "paid_amount" not in compact_metadata
+    assert "Columns:" not in compact_metadata

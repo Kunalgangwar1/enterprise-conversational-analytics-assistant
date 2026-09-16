@@ -4,6 +4,7 @@ from collections.abc import Iterable
 
 from app.llm.models import LLMMessage, LLMRequest, LLMRole
 from app.metadata.models import DomainMetadata, TableMetadata
+from app.security.prompt_boundary import secure_system_prompt, untrusted_content
 
 DOMAIN_SELECTION_SYSTEM_PROMPT = """Select the minimum set of business domains needed to answer
 the user's analytical question. Select only names from the supplied domain catalog. Do not answer
@@ -141,9 +142,15 @@ def build_sql_rewrite_request(
 def _structured_request(system_prompt: str, grounding: str, safe_question: str) -> LLMRequest:
     return LLMRequest(
         messages=[
-            LLMMessage(role=LLMRole.SYSTEM, content=system_prompt),
-            LLMMessage(role=LLMRole.SYSTEM, content=grounding),
-            LLMMessage(role=LLMRole.USER, content=safe_question),
+            LLMMessage(role=LLMRole.SYSTEM, content=secure_system_prompt(system_prompt)),
+            LLMMessage(
+                role=LLMRole.USER,
+                content=untrusted_content("application grounding", grounding),
+            ),
+            LLMMessage(
+                role=LLMRole.USER,
+                content=untrusted_content("user question", safe_question),
+            ),
         ],
         temperature=0,
     )

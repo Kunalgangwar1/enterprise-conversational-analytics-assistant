@@ -12,6 +12,7 @@ from app.data_quality.models import (
 from app.data_quality.retriever import DataQualityRetriever
 from app.llm.base import LLMClient
 from app.llm.models import LLMMessage, LLMRequest, LLMRole
+from app.security.prompt_boundary import secure_system_prompt, untrusted_content
 
 NO_DATA_QUALITY_EVIDENCE = (
     "I couldn't find enough information in the Data Quality knowledge base to answer that question."
@@ -41,13 +42,19 @@ class DataQualityAgent:
         generated = self._llm_client_factory().generate_structured(
             LLMRequest(
                 messages=[
-                    LLMMessage(role=LLMRole.SYSTEM, content=_SYSTEM_PROMPT),
-                    LLMMessage(role=LLMRole.USER, content=f"Question:\n{safe_question}"),
+                    LLMMessage(
+                        role=LLMRole.SYSTEM,
+                        content=secure_system_prompt(_SYSTEM_PROMPT),
+                    ),
                     LLMMessage(
                         role=LLMRole.USER,
-                        content=(
-                            "BEGIN DATA QUALITY EVIDENCE\n"
-                            f"{self._context_builder.build(evidence)}\nEND EVIDENCE"
+                        content=untrusted_content("user question", safe_question),
+                    ),
+                    LLMMessage(
+                        role=LLMRole.USER,
+                        content=untrusted_content(
+                            "data quality evidence",
+                            self._context_builder.build(evidence),
                         ),
                     ),
                 ]

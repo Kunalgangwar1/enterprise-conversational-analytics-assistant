@@ -24,7 +24,10 @@ def test_privacy_processed_question_is_used_for_all_llm_calls(
     assert len(fake.requests) == 4
     for request in fake.requests:
         user_messages = [message for message in request.messages if message.role is LLMRole.USER]
-        assert [message.content for message in user_messages] == ["Show claims for T001."]
+        assert len(user_messages) == 2
+        assert "BEGIN_UNTRUSTED_APPLICATION_GROUNDING" in user_messages[0].content
+        assert "BEGIN_UNTRUSTED_USER_QUESTION" in user_messages[1].content
+        assert "Show claims for T001." in user_messages[1].content
         assert all("M000245" not in message.content for message in request.messages)
 
 
@@ -43,7 +46,8 @@ def test_prompt_injection_text_remains_user_content_and_not_schema_grounding(
 
     for request in fake.requests:
         assert request.messages[-1].role is LLMRole.USER
-        assert request.messages[-1].content == question
+        assert "BEGIN_UNTRUSTED_USER_QUESTION" in request.messages[-1].content
+        assert question in request.messages[-1].content
         system_text = "\n".join(
             message.content for message in request.messages if message.role is LLMRole.SYSTEM
         )

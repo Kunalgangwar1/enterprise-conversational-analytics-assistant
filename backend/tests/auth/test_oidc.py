@@ -33,6 +33,8 @@ def _settings(**overrides: object) -> Settings:
         "auth_oidc_audience": AUDIENCE,
         "auth_oidc_jwks_url": "https://identity.example.invalid/.well-known/jwks.json",
         "auth_group_role_mapping": {"analytics-viewers": "viewer"},
+        "session_cookie_secure": True,
+        "api_docs_enabled": False,
     }
     values.update(overrides)
     return Settings(**values)

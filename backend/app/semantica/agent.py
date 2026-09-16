@@ -11,6 +11,7 @@ from app.knowledge_catalog.models import (
 )
 from app.llm.base import LLMClient
 from app.llm.models import LLMMessage, LLMRequest, LLMRole
+from app.security.prompt_boundary import secure_system_prompt, untrusted_content
 from app.semantica.exceptions import SemanticaCitationError
 from app.semantica.retriever import SemanticaRetriever
 
@@ -43,13 +44,19 @@ class SemanticaAgent:
         generated = self._llm_client_factory().generate_structured(
             LLMRequest(
                 messages=[
-                    LLMMessage(role=LLMRole.SYSTEM, content=_SYSTEM_PROMPT),
-                    LLMMessage(role=LLMRole.USER, content=f"Question:\n{safe_question}"),
+                    LLMMessage(
+                        role=LLMRole.SYSTEM,
+                        content=secure_system_prompt(_SYSTEM_PROMPT),
+                    ),
                     LLMMessage(
                         role=LLMRole.USER,
-                        content=(
-                            "BEGIN SEMANTICA EVIDENCE\n"
-                            f"{self._context_builder.build(retrieval.evidence)}\nEND EVIDENCE"
+                        content=untrusted_content("user question", safe_question),
+                    ),
+                    LLMMessage(
+                        role=LLMRole.USER,
+                        content=untrusted_content(
+                            "semantica evidence",
+                            self._context_builder.build(retrieval.evidence),
                         ),
                     ),
                 ]

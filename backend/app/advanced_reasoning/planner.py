@@ -30,6 +30,7 @@ from app.llm.base import LLMClient
 from app.llm.exceptions import LLMError
 from app.llm.models import LLMMessage, LLMRequest, LLMRole
 from app.routing.models import SupervisorDecision
+from app.security.prompt_boundary import secure_system_prompt, untrusted_content
 
 StructuredResult = TypeVar("StructuredResult", bound=BaseModel)
 
@@ -203,8 +204,11 @@ class AdvancedReasoningNodes:
             return self._llm.generate_structured(
                 LLMRequest(
                     messages=[
-                        LLMMessage(role=LLMRole.SYSTEM, content=system),
-                        LLMMessage(role=LLMRole.USER, content=user),
+                        LLMMessage(role=LLMRole.SYSTEM, content=secure_system_prompt(system)),
+                        LLMMessage(
+                            role=LLMRole.USER,
+                            content=untrusted_content("reasoning context", user),
+                        ),
                     ],
                     temperature=0,
                 ),
