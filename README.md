@@ -5,10 +5,12 @@ analytics system. It uses synthetic healthcare examples only. Proprietary code, 
 patient/member data, and credentials must never be committed.
 
 `ARCHITECTURE_REPO_RUNBOOK.md` is the primary reference for the intended system. The implementation
-is complete through Phase 21. Phase 18 connects specialist workflows through a thin chat
+is complete through Phase 24. Phase 18 connects specialist workflows through a thin chat
 orchestrator and React One UI, Phase 19 adds the deterministic AI Dashboard, and Phase 20 adds a
 sidecar evaluation/regression harness. Phase 21 adds provider-neutral authentication, explicit
-RBAC, subject-owned sessions, and deterministic self-access inspection.
+RBAC, subject-owned sessions, and deterministic self-access inspection. Phases 22-23 add shared
+Redis state and security hardening; Phase 24 adds production-capable images and a local Compose
+integration stack.
 
 ## Repository layout
 
@@ -65,6 +67,22 @@ The frontend needs no Gemini, Azure, AWS, or database credentials. LLM-backed ba
 require their selected provider configuration, while deterministic modes such as Data Discovery
 remain usable without model credentials.
 The aggregate Dashboard also requires no model or AWS credentials.
+
+## Docker quick start
+
+Docker Compose provides PostgreSQL, Redis, one-shot migrations, the FastAPI backend, and the React
+production frontend. It is local integration infrastructure, not the final AWS topology.
+
+```bash
+cp .env.docker.example .env.docker
+# Replace every local-only placeholder password in .env.docker.
+docker compose --env-file .env.docker up -d --build --wait
+docker compose --env-file .env.docker run --rm seed  # optional synthetic data
+```
+
+Open `http://localhost:5173/#/`. Stop without deleting named volumes using `docker compose
+--env-file .env.docker down`. See [`docs/docker.md`](docs/docker.md) for architecture, role setup,
+health checks, logs, seeding, and intentional volume reset instructions.
 
 ## Evaluation
 
