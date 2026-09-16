@@ -5,12 +5,13 @@ analytics system. It uses synthetic healthcare examples only. Proprietary code, 
 patient/member data, and credentials must never be committed.
 
 `ARCHITECTURE_REPO_RUNBOOK.md` is the primary reference for the intended system. The implementation
-is complete through Phase 24. Phase 18 connects specialist workflows through a thin chat
+is complete through Phase 25. Phase 18 connects specialist workflows through a thin chat
 orchestrator and React One UI, Phase 19 adds the deterministic AI Dashboard, and Phase 20 adds a
 sidecar evaluation/regression harness. Phase 21 adds provider-neutral authentication, explicit
 RBAC, subject-owned sessions, and deterministic self-access inspection. Phases 22-23 add shared
 Redis state and security hardening; Phase 24 adds production-capable images and a local Compose
-integration stack.
+integration stack. Phase 25 adds cloud-independent GitHub Actions quality gates and versioned GHCR
+artifact delivery without deploying to AWS.
 
 ## Repository layout
 
@@ -101,6 +102,15 @@ python -m app.evaluation.run --profile live
 
 Compare a reviewed baseline with `--compare-baseline evals/baselines/offline-v1.json`. Live runs are
 never started automatically and do not fall back to fakes. See [`docs/evaluation.md`](docs/evaluation.md).
+
+## CI/CD
+
+Pull requests and `main` pushes run backend, PostgreSQL/Redis integration, frontend, evaluation,
+security-audit, Compose, and Docker-build gates. Python 3.11 matches the backend image; Python 3.14
+has a weekly/manual compatibility workflow. Semantic version tags publish separate backend and
+frontend images to GHCR using the automatic least-privilege `GITHUB_TOKEN`. Normal CI requires no
+application or cloud secrets and never runs live LLM evaluation or AWS deployment. See
+[`docs/ci-cd.md`](docs/ci-cd.md).
 
 ## Database setup
 

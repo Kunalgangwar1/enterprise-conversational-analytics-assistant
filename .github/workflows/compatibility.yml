@@ -1,0 +1,41 @@
+name: Python Compatibility
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-314:
+    name: Python 3.14 Compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      APP_ENV: test
+      AUTH_MODE: development
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Set up Python 3.14
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.14"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          version: 0.8.22
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install locked backend development dependencies
+        working-directory: backend
+        run: uv sync --frozen --extra dev
+      - name: Run network-free backend tests
+        working-directory: backend
+        run: uv run pytest -m "not integration and not live_llm"
