@@ -1,0 +1,29 @@
+datasets:
+  - dataset: members
+    repository: datasets-member
+    table: members
+    domain: member
+  - dataset: providers
+    repository: datasets-provider-network
+    table: providers
+    domain: provider_network
+  - dataset: facilities
+    repository: datasets-provider-network
+    table: facilities
+    domain: provider_network
+  - dataset: encounters
+    repository: datasets-clinical
+    table: encounters
+    domain: clinical_encounters
+  - dataset: claims
+    repository: datasets-claims
+    table: claims
+    domain: claims
+  - dataset: claim_lines
+    repository: datasets-claims
+    table: claim_lines
+    domain: claims
+  - dataset: appointments
+    repository: datasets-scheduling
+    table: appointments
+    domain: scheduling

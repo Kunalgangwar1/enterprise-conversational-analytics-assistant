@@ -1,0 +1,320 @@
+tables:
+  - name: members
+    description: Synthetic people represented in the learning dataset.
+    grain: One row per synthetic member.
+    domains:
+      - member
+    aliases:
+      - member
+      - members
+      - patient
+      - patients
+    columns:
+      id:
+        description: Internal synthetic member identifier.
+        aliases: [member id, patient id]
+      member_external_id:
+        description: Human-readable synthetic member reference.
+        aliases: [member number, membership number, external member id]
+      first_name:
+        description: Synthetic given name.
+        aliases: [first name, given name]
+      last_name:
+        description: Synthetic family name.
+        aliases: [last name, surname]
+      date_of_birth:
+        description: Synthetic date of birth.
+        aliases: [birth date, dob]
+      sex_at_birth:
+        description: Synthetic sex-at-birth category used by the sample dataset.
+        aliases: [sex, sex at birth]
+        value_hints: [female, male, intersex, unknown]
+      state:
+        description: Synthetic state of residence.
+        aliases: [member state, patient state]
+      email:
+        description: Optional synthetic email address.
+        aliases: [email, email address]
+      phone:
+        description: Optional synthetic telephone number.
+        aliases: [phone, phone number]
+      enrollment_start:
+        description: Date when synthetic enrollment begins.
+        aliases: [coverage start, enrollment start]
+      enrollment_end:
+        description: Optional date when synthetic enrollment ends.
+        aliases: [coverage end, enrollment end]
+      created_at:
+        description: Timestamp when the synthetic record was created.
+        aliases: [created timestamp]
+    notes:
+      - Demographic fields are synthetic and must not be interpreted as production member data.
+
+  - name: facilities
+    description: Synthetic healthcare delivery locations in the provider network.
+    grain: One row per synthetic healthcare facility.
+    domains:
+      - provider_network
+    aliases:
+      - facility
+      - facilities
+      - hospital
+      - clinic
+      - care location
+    columns:
+      id:
+        description: Internal synthetic facility identifier.
+        aliases: [facility id]
+      facility_external_id:
+        description: Human-readable synthetic facility reference.
+        aliases: [facility code, external facility id]
+      name:
+        description: Synthetic facility name.
+        aliases: [facility name, location name]
+      facility_type:
+        description: Category of healthcare facility.
+        aliases: [type, location type]
+        value_hints: [Hospital, Clinic, Urgent Care, Ambulatory Center]
+      city:
+        description: Synthetic facility city.
+        aliases: [facility city]
+      state:
+        description: Synthetic facility state.
+        aliases: [facility state]
+      created_at:
+        description: Timestamp when the synthetic record was created.
+        aliases: [created timestamp]
+    notes:
+      - Facility counts can be grouped by facility type or geography.
+
+  - name: providers
+    description: Synthetic clinicians associated with facilities.
+    grain: One row per synthetic healthcare provider.
+    domains:
+      - provider_network
+    aliases:
+      - provider
+      - providers
+      - clinician
+      - clinicians
+      - doctor
+    columns:
+      id:
+        description: Internal synthetic provider identifier.
+        aliases: [provider id, clinician id]
+      provider_external_id:
+        description: Human-readable synthetic provider reference.
+        aliases: [provider number, external provider id]
+      synthetic_npi:
+        description: Synthetic provider registry identifier for learning use only.
+        aliases: [npi, provider registry id]
+      first_name:
+        description: Synthetic provider given name.
+        aliases: [first name, given name]
+      last_name:
+        description: Synthetic provider family name.
+        aliases: [last name, surname]
+      specialty:
+        description: Provider clinical specialty.
+        aliases: [provider specialty, clinical specialty]
+        value_hints: [Primary Care, Cardiology, Orthopedics, Dermatology, Neurology, Endocrinology]
+      facility_id:
+        description: Facility with which the provider is associated.
+        aliases: [facility id, practice location]
+      created_at:
+        description: Timestamp when the synthetic record was created.
+        aliases: [created timestamp]
+    notes:
+      - Join facility_id to facilities.id for provider-network location analysis.
+
+  - name: encounters
+    description: Synthetic clinical interactions between members and providers.
+    grain: One row per synthetic clinical encounter.
+    domains:
+      - clinical_encounters
+    aliases:
+      - encounter
+      - encounters
+      - visit
+      - visits
+      - care episode
+    columns:
+      id:
+        description: Internal synthetic encounter identifier.
+        aliases: [encounter id, visit id]
+      encounter_external_id:
+        description: Human-readable synthetic encounter reference.
+        aliases: [encounter number, visit number, external encounter id]
+      member_id:
+        description: Member who received care.
+        aliases: [member id, patient id]
+      provider_id:
+        description: Provider who delivered care.
+        aliases: [provider id, clinician id]
+      facility_id:
+        description: Facility where care was delivered.
+        aliases: [facility id, care location]
+      encounter_type:
+        description: Care setting or interaction type.
+        aliases: [visit type, care setting]
+        value_hints: [outpatient, inpatient, emergency, telehealth]
+      status:
+        description: Current or final encounter status.
+        aliases: [encounter status, visit status]
+        value_hints: [completed, cancelled, in_progress]
+      encounter_date:
+        description: Calendar date of the synthetic encounter.
+        aliases: [visit date, date of service]
+      primary_diagnosis_code:
+        description: Synthetic diagnosis code associated with the encounter.
+        aliases: [diagnosis, diagnosis code, primary diagnosis]
+        value_hints: [SYN-D01, SYN-D02, SYN-D03, SYN-D04, SYN-D05, SYN-D06]
+      created_at:
+        description: Timestamp when the synthetic record was created.
+        aliases: [created timestamp]
+    notes:
+      - Diagnosis codes are synthetic learning labels rather than clinical coding standards.
+
+  - name: claims
+    description: Synthetic reimbursement records associated with clinical encounters.
+    grain: One row per synthetic healthcare claim.
+    domains:
+      - claims
+    aliases:
+      - claim
+      - claims
+      - medical claim
+      - reimbursement record
+      - healthcare spending
+    columns:
+      id:
+        description: Internal synthetic claim identifier.
+        aliases: [claim id]
+      claim_external_id:
+        description: Human-readable synthetic claim reference.
+        aliases: [claim number, external claim id]
+      encounter_id:
+        description: Encounter that generated the claim.
+        aliases: [encounter id, visit id]
+      member_id:
+        description: Member associated with the claim.
+        aliases: [member id, patient id]
+      provider_id:
+        description: Billing or servicing provider associated with the claim.
+        aliases: [provider id, clinician id]
+      claim_status:
+        description: Current or final claim adjudication status.
+        aliases: [claim status, adjudication status]
+        value_hints: [submitted, pending, paid, denied, adjusted]
+      payer_type:
+        description: Synthetic category of payer responsibility.
+        aliases: [payer, insurance type, coverage type]
+        value_hints: [commercial, medicare, medicaid, self_pay]
+      service_date:
+        description: Date on which the claimed service occurred.
+        aliases: [date of service, claim service date]
+      submitted_amount:
+        description: Total amount billed on the synthetic claim.
+        aliases: [submitted amount, billed cost, charges]
+      allowed_amount:
+        description: Amount allowed after synthetic adjudication.
+        aliases: [allowed cost, approved amount]
+      paid_amount:
+        description: Amount paid on the synthetic claim.
+        aliases: [paid cost, reimbursement amount]
+      created_at:
+        description: Timestamp when the synthetic record was created.
+        aliases: [created timestamp]
+    notes:
+      - Aggregate monetary fields only at the claim grain unless claim-line duplication is handled explicitly.
+      - Monetary values are synthetic and are not production financial data.
+
+  - name: claim_lines
+    description: Synthetic service-line details belonging to claims.
+    grain: One row per service line within a synthetic healthcare claim.
+    domains:
+      - claims
+    aliases:
+      - claim line
+      - claim lines
+      - service line
+      - procedure line
+    columns:
+      id:
+        description: Internal synthetic claim-line identifier.
+        aliases: [claim line id, service line id]
+      claim_id:
+        description: Parent claim for the service line.
+        aliases: [claim id, parent claim]
+      line_number:
+        description: Sequence number of the line within its claim.
+        aliases: [line number, service line number]
+      procedure_code:
+        description: Synthetic procedure code for the service line.
+        aliases: [procedure, procedure code, service code]
+        value_hints: [SYN-P01, SYN-P02, SYN-P03, SYN-P04, SYN-P05]
+      diagnosis_code:
+        description: Synthetic diagnosis code associated with the service line.
+        aliases: [diagnosis, diagnosis code]
+        value_hints: [SYN-D01, SYN-D02, SYN-D03, SYN-D04, SYN-D05, SYN-D06]
+      service_units:
+        description: Number of synthetic service units billed.
+        aliases: [service units, quantity]
+      billed_amount:
+        description: Amount billed for the synthetic service line.
+        aliases: [line billed amount, line charges]
+      allowed_amount:
+        description: Amount allowed for the synthetic service line.
+        aliases: [line allowed amount]
+      paid_amount:
+        description: Amount paid for the synthetic service line.
+        aliases: [line paid amount, line reimbursement]
+      created_at:
+        description: Timestamp when the synthetic record was created.
+        aliases: [created timestamp]
+    notes:
+      - Joining claims to claim_lines creates multiple rows per claim; aggregating claim-level amounts after the join can duplicate those measures.
+      - Join claim_id to claims.id and preserve the claim-line grain when aggregating line amounts.
+
+  - name: appointments
+    description: Synthetic scheduled healthcare visits and their outcomes.
+    grain: One row per synthetic appointment.
+    domains:
+      - scheduling
+    aliases:
+      - appointment
+      - appointments
+      - booking
+      - scheduled visit
+    columns:
+      id:
+        description: Internal synthetic appointment identifier.
+        aliases: [appointment id, booking id]
+      appointment_external_id:
+        description: Human-readable synthetic appointment reference.
+        aliases: [appointment number, booking number, external appointment id]
+      member_id:
+        description: Member for whom the appointment was scheduled.
+        aliases: [member id, patient id]
+      provider_id:
+        description: Provider scheduled for the appointment.
+        aliases: [provider id, clinician id]
+      facility_id:
+        description: Facility where the appointment was scheduled.
+        aliases: [facility id, appointment location]
+      scheduled_at:
+        description: Scheduled appointment date and time.
+        aliases: [appointment time, scheduled time]
+      status:
+        description: Current or final appointment status.
+        aliases: [appointment status, booking status]
+        value_hints: [scheduled, completed, cancelled, no_show]
+      reason_category:
+        description: High-level synthetic reason for the appointment.
+        aliases: [appointment reason, visit reason]
+        value_hints: [preventive, new_symptom, follow_up, chronic_care, procedure]
+      created_at:
+        description: Timestamp when the synthetic record was created.
+        aliases: [created timestamp]
+    notes:
+      - Appointment status supports completion, cancellation, and no-show rate analysis.

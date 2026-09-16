@@ -1,0 +1,4 @@
+
+plsql-password = eca_local_dev_password
+
+eca_local = eca_reader_dev_password

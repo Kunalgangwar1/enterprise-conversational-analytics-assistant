@@ -1,0 +1,19 @@
+agents:
+  group_access:
+    enabled: true
+  sql:
+    enabled: true
+  forecasting:
+    enabled: true
+  chat:
+    enabled: true
+  help:
+    enabled: true
+  data_discovery:
+    enabled: true
+  knowledge_catalog:
+    enabled: true
+  semantica:
+    enabled: true
+  data_quality:
+    enabled: true

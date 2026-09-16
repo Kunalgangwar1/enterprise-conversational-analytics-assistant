@@ -1,0 +1,37 @@
+ui:
+  follow_up_questions_show: true
+  context_button: true
+  chat_latency_badge: false
+  knowledge_graph_tools_show: false
+
+tools:
+  sql: true
+  forecasting: false
+  group_access: false
+  data_discovery: false
+  knowledge_catalog: false
+  semantica: false
+  data_quality: false
+
+retrieval:
+  hierarchical_rag: true
+  vector_rag: true
+
+reasoning:
+  deep_agent_single_intent_enabled: false
+  deep_agent_min_confidence: 0.80
+  deep_agent_eligible_routes:
+    - sql
+    - knowledge_catalog
+  deep_agent_max_subtasks: 5
+  nlp2sql_multihop_enabled: false
+  nlp2sql_multihop_max_hops: 3
+  nlp2sql_multihop_max_rows_per_hop: 100
+  nlp2sql_multihop_total_row_budget: 250
+  nlp2sql_multihop_total_timeout_seconds: 20
+
+observability:
+  otel_enabled: false
+  langfuse_enabled: false
+  mlflow_enabled: false
+  agentops_enabled: false

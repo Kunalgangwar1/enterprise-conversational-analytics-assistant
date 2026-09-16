@@ -1,0 +1,57 @@
+domains:
+  - name: member
+    description: Synthetic member demographics and enrollment-oriented attributes.
+    aliases:
+      - member
+      - members
+      - patient
+      - patients
+    tables:
+      - members
+
+  - name: provider_network
+    description: Synthetic healthcare providers and the facilities in their network.
+    aliases:
+      - provider network
+      - provider
+      - providers
+      - physician
+      - clinician
+      - facility
+      - facilities
+      - specialty
+      - care network
+    tables:
+      - providers
+      - facilities
+
+  - name: clinical_encounters
+    description: Synthetic interactions between members and healthcare providers.
+    aliases:
+      - clinical encounters
+      - encounters
+      - visits
+      - care episodes
+    tables:
+      - encounters
+
+  - name: claims
+    description: Synthetic healthcare claims and their service-line details.
+    aliases:
+      - claims
+      - billing
+      - reimbursement
+      - healthcare spending
+      - claim cost
+    tables:
+      - claims
+      - claim_lines
+
+  - name: scheduling
+    description: Synthetic appointments and scheduling outcomes.
+    aliases:
+      - scheduling
+      - appointments
+      - bookings
+    tables:
+      - appointments

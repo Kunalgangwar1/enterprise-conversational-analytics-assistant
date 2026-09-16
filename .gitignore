@@ -1,0 +1,48 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+build/
+dist/
+
+# Frontend
+node_modules/
+.npm/
+coverage/
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Operating systems
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.log
+*.tmp
+tmp/
+
+# Generated metadata snapshots
+backend/artifacts/metadata/*.json
+
+# Generated local session state
+backend/artifacts/sessions/
+
+# Generated local Knowledge Catalog indexes and manifests
+backend/artifacts/knowledge_catalog/
+backend/artifacts/semantica/
