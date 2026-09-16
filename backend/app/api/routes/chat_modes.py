@@ -1,12 +1,18 @@
 """Public API contract for static canonical chat-mode information."""
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
 from app.api.errors import APIError, APIErrorResponse
+from app.auth.dependencies import require_permission
+from app.auth.permissions import Permission
 from app.core.chat_modes import UnsupportedChatModeError
 from app.services.chat_mode_service import ChatModeWelcome, chat_mode_service
 
-router = APIRouter(prefix="/chat-mode", tags=["chat-modes"])
+router = APIRouter(
+    prefix="/chat-mode",
+    tags=["chat-modes"],
+    dependencies=[Depends(require_permission(Permission.CHAT_USE))],
+)
 
 
 @router.get(

@@ -7,9 +7,10 @@ from threading import RLock
 
 from pydantic import ValidationError
 
-from app.sessions.exceptions import SessionStoreError
+from app.sessions.exceptions import SessionCorruptError, SessionStoreError
 from app.sessions.identity import SessionIdentity, derive_session_storage_key
 from app.sessions.models import SessionState
+from app.sessions.store import SessionMutation
 
 
 class JsonFileSessionStore:
@@ -40,13 +41,16 @@ class JsonFileSessionStore:
             try:
                 state = SessionState.model_validate_json(payload)
             except ValidationError as exc:
-                raise SessionStoreError("persisted session state is corrupted") from exc
+                raise SessionCorruptError("persisted session state is corrupted") from exc
 
             if (
                 state.browser_session_id != identity.browser_session_id
                 or state.tab_id != identity.tab_id
+                or state.owner_subject != identity.owner_subject
             ):
-                raise SessionStoreError("persisted session identity does not match its storage key")
+                raise SessionCorruptError(
+                    "persisted session identity does not match its storage key"
+                )
             return state
 
     def save(self, state: SessionState) -> None:
@@ -55,6 +59,7 @@ class JsonFileSessionStore:
         identity = SessionIdentity(
             browser_session_id=state.browser_session_id,
             tab_id=state.tab_id,
+            owner_subject=state.owner_subject,
         )
         final_path = self.path_for(identity)
         temporary_path: Path | None = None
@@ -96,11 +101,37 @@ class JsonFileSessionStore:
             except OSError as exc:
                 raise SessionStoreError("unable to delete persisted session state") from exc
 
+    def update(
+        self,
+        identity: SessionIdentity,
+        mutation: SessionMutation,
+    ) -> SessionState:
+        """Apply one process-safe read/modify/write under the existing reentrant lock."""
+
+        with self._lock:
+            updated = mutation(self.load(identity))
+            self._validate_identity(identity, updated)
+            self.save(updated)
+            return updated
+
+    def close(self) -> None:
+        """Satisfy the shared lifecycle contract; file storage holds no open resources."""
+
+    @staticmethod
+    def _validate_identity(identity: SessionIdentity, state: SessionState) -> None:
+        if (
+            state.browser_session_id != identity.browser_session_id
+            or state.tab_id != identity.tab_id
+            or state.owner_subject != identity.owner_subject
+        ):
+            raise SessionCorruptError("session mutation changed the persisted identity")
+
     def path_for(self, identity: SessionIdentity) -> Path:
         """Return the safe hash-derived path for a validated identity."""
 
         storage_key = derive_session_storage_key(
             identity.browser_session_id,
             identity.tab_id,
+            identity.owner_subject,
         )
         return self._session_directory / f"session_{storage_key}.json"

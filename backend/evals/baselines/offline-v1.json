@@ -1,0 +1,1593 @@
+{
+  "errors": 0,
+  "failed": 0,
+  "latency_ms": {
+    "max": 19.213826992199756,
+    "mean": 1.964205734539599,
+    "p50": 0.18055499822366983,
+    "p95": 11.513728997670114
+  },
+  "metadata": {
+    "dataset_versions": {
+      "advanced_reasoning": "1.0",
+      "data_discovery": "1.0",
+      "data_quality": "1.0",
+      "forecasting": "1.0",
+      "knowledge_catalog": "1.0",
+      "multihop": "1.0",
+      "nlp2sql": "1.0",
+      "orchestration": "1.0",
+      "privacy": "1.0",
+      "routing": "1.0",
+      "semantica": "1.0",
+      "sql_safety": "1.0"
+    },
+    "embedding_model": null,
+    "embedding_provider": null,
+    "git_commit_sha": "3148a3eeb4a70c494b392d20c6269163e16c9769",
+    "llm_model": null,
+    "llm_provider": null,
+    "profile": "offline",
+    "python_version": "3.14.4",
+    "random_seed": 42,
+    "run_id": "20260916T114202144943Z-offline",
+    "timestamp": "2026-09-16T11:42:02.144943Z"
+  },
+  "metrics": [
+    {
+      "direction": "lower_is_better",
+      "hard_gate": true,
+      "name": "advanced_reasoning.budget_violation_count",
+      "value": 0.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "advanced_reasoning.completion_rate",
+      "value": 1.0
+    },
+    {
+      "direction": "lower_is_better",
+      "hard_gate": true,
+      "name": "advanced_reasoning.invalid_tool_count",
+      "value": 0.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "advanced_reasoning.tool_selection_accuracy",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "data_discovery.mrr",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "data_discovery.recall_at_k",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "data_discovery.top1_accuracy",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "data_quality.citation_validity_rate",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "data_quality.evidence_recall_at_k",
+      "value": 1.0
+    },
+    {
+      "direction": "lower_is_better",
+      "hard_gate": true,
+      "name": "data_quality.invalid_citation_count",
+      "value": 0.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "data_quality.mrr",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "data_quality.no_evidence_accuracy",
+      "value": 1.0
+    },
+    {
+      "direction": "lower_is_better",
+      "hard_gate": true,
+      "name": "forecasting.forecast_invariant_violation_count",
+      "value": 0.0
+    },
+    {
+      "direction": "lower_is_better",
+      "hard_gate": false,
+      "name": "forecasting.mae",
+      "value": 0.0
+    },
+    {
+      "direction": "lower_is_better",
+      "hard_gate": false,
+      "name": "forecasting.naive_mae",
+      "value": 1.8333333333333333
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "forecasting.relative_improvement",
+      "value": 0.75
+    },
+    {
+      "direction": "lower_is_better",
+      "hard_gate": false,
+      "name": "forecasting.rmse",
+      "value": 0.0
+    },
+    {
+      "direction": "lower_is_better",
+      "hard_gate": false,
+      "name": "forecasting.smape",
+      "value": 0.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "knowledge_catalog.citation_validity_rate",
+      "value": 1.0
+    },
+    {
+      "direction": "lower_is_better",
+      "hard_gate": true,
+      "name": "knowledge_catalog.invalid_citation_count",
+      "value": 0.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "knowledge_catalog.mrr",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "knowledge_catalog.no_evidence_accuracy",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "knowledge_catalog.recall_at_k",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "knowledge_catalog.retrieval_hit_rate",
+      "value": 1.0
+    },
+    {
+      "direction": "lower_is_better",
+      "hard_gate": true,
+      "name": "multihop.budget_violation_count",
+      "value": 0.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "multihop.final_result_accuracy",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "multihop.hop_execution_success_rate",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "multihop.plan_success_rate",
+      "value": 1.0
+    },
+    {
+      "direction": "lower_is_better",
+      "hard_gate": true,
+      "name": "multihop.privacy_leak_count",
+      "value": 0.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "nlp2sql.case_accuracy",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "nlp2sql.execution_success_rate",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "nlp2sql.generation_success_rate",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "nlp2sql.reference_sql_isolation_rate",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "nlp2sql.result_equivalence_accuracy",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "nlp2sql.schema_grounding_accuracy",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "nlp2sql.validation_acceptance_rate",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "orchestration.response_contract_accuracy",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "orchestration.route_contract_accuracy",
+      "value": 1.0
+    },
+    {
+      "direction": "lower_is_better",
+      "hard_gate": true,
+      "name": "privacy.privacy_leak_count",
+      "value": 0.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "routing.routing_accuracy",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "semantica.evidence_recall_at_k",
+      "value": 1.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "semantica.graph_supported_hit_rate",
+      "value": 1.0
+    },
+    {
+      "direction": "lower_is_better",
+      "hard_gate": true,
+      "name": "semantica.invalid_distance_count",
+      "value": 0.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "semantica.max_graph_distance_observed",
+      "value": 2.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "semantica.seed_hit_rate",
+      "value": 1.0
+    },
+    {
+      "direction": "lower_is_better",
+      "hard_gate": true,
+      "name": "sql_safety.unsafe_execution_count",
+      "value": 0.0
+    },
+    {
+      "direction": "higher_is_better",
+      "hard_gate": false,
+      "name": "sql_safety.unsafe_rejection_rate",
+      "value": 1.0
+    }
+  ],
+  "pass_rate": 1.0,
+  "passed": 68,
+  "regression": null,
+  "skipped": 0,
+  "suites": [
+    {
+      "cases": [
+        {
+          "actual": "sql, knowledge_catalog",
+          "case_id": "advanced-001",
+          "elapsed_ms": 0.10888298857025802,
+          "error": null,
+          "error_type": null,
+          "expected": "sql, knowledge_catalog",
+          "metrics": {
+            "budget_violation": 0.0,
+            "completed": 1.0,
+            "invalid_tool": 0.0,
+            "tool_selection": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "advanced_reasoning"
+        },
+        {
+          "actual": "data_discovery, data_quality",
+          "case_id": "advanced-002",
+          "elapsed_ms": 0.07939500210341066,
+          "error": null,
+          "error_type": null,
+          "expected": "data_discovery, data_quality",
+          "metrics": {
+            "budget_violation": 0.0,
+            "completed": 1.0,
+            "invalid_tool": 0.0,
+            "tool_selection": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "advanced_reasoning"
+        },
+        {
+          "actual": "semantica",
+          "case_id": "advanced-003",
+          "elapsed_ms": 0.033724994864314795,
+          "error": null,
+          "error_type": null,
+          "expected": "semantica",
+          "metrics": {
+            "budget_violation": 0.0,
+            "completed": 1.0,
+            "invalid_tool": 0.0,
+            "tool_selection": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "advanced_reasoning"
+        }
+      ],
+      "dataset_version": "1.0",
+      "metrics": {
+        "budget_violation_count": 0.0,
+        "completion_rate": 1.0,
+        "invalid_tool_count": 0.0,
+        "tool_selection_accuracy": 1.0
+      },
+      "suite": "advanced_reasoning"
+    },
+    {
+      "cases": [
+        {
+          "actual": "providers, facilities",
+          "case_id": "discovery-001",
+          "elapsed_ms": 0.46573700092267245,
+          "error": null,
+          "error_type": null,
+          "expected": "providers",
+          "metrics": {
+            "mrr": 1.0,
+            "recall_at_k": 1.0,
+            "top1": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "data_discovery"
+        },
+        {
+          "actual": "claims, facilities",
+          "case_id": "discovery-002",
+          "elapsed_ms": 0.4051139985676855,
+          "error": null,
+          "error_type": null,
+          "expected": "claims",
+          "metrics": {
+            "mrr": 1.0,
+            "recall_at_k": 1.0,
+            "top1": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "data_discovery"
+        },
+        {
+          "actual": "appointments, encounters",
+          "case_id": "discovery-003",
+          "elapsed_ms": 0.38103100087027997,
+          "error": null,
+          "error_type": null,
+          "expected": "appointments",
+          "metrics": {
+            "mrr": 1.0,
+            "recall_at_k": 1.0,
+            "top1": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "data_discovery"
+        },
+        {
+          "actual": "encounters, facilities",
+          "case_id": "discovery-004",
+          "elapsed_ms": 0.4487859987420961,
+          "error": null,
+          "error_type": null,
+          "expected": "encounters",
+          "metrics": {
+            "mrr": 1.0,
+            "recall_at_k": 1.0,
+            "top1": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "data_discovery"
+        },
+        {
+          "actual": "facilities",
+          "case_id": "discovery-005",
+          "elapsed_ms": 0.36599300801754,
+          "error": null,
+          "error_type": null,
+          "expected": "facilities",
+          "metrics": {
+            "mrr": 1.0,
+            "recall_at_k": 1.0,
+            "top1": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "data_discovery"
+        }
+      ],
+      "dataset_version": "1.0",
+      "metrics": {
+        "mrr": 1.0,
+        "recall_at_k": 1.0,
+        "top1_accuracy": 1.0
+      },
+      "suite": "data_discovery"
+    },
+    {
+      "cases": [
+        {
+          "actual": "dq_dimension_completeness",
+          "case_id": "dq-001",
+          "elapsed_ms": 0.28720700356643647,
+          "error": null,
+          "error_type": null,
+          "expected": "dq_dimension_completeness",
+          "metrics": {
+            "citation_valid": 1.0,
+            "hit": 1.0,
+            "mrr": 1.0,
+            "recall_at_k": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "data_quality"
+        },
+        {
+          "actual": "dq_dimension_freshness, dq_overview",
+          "case_id": "dq-002",
+          "elapsed_ms": 0.24233499425463378,
+          "error": null,
+          "error_type": null,
+          "expected": "dq_dimension_freshness",
+          "metrics": {
+            "citation_valid": 1.0,
+            "hit": 1.0,
+            "mrr": 1.0,
+            "recall_at_k": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "data_quality"
+        },
+        {
+          "actual": "dq_rules_claims, dq_rules_appointments, dq_rules_claim_lines, dq_rules_encounters, dq_rules_facilities",
+          "case_id": "dq-003",
+          "elapsed_ms": 0.24822200066410005,
+          "error": null,
+          "error_type": null,
+          "expected": "dq_rules_claims",
+          "metrics": {
+            "citation_valid": 1.0,
+            "hit": 1.0,
+            "mrr": 1.0,
+            "recall_at_k": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "data_quality"
+        },
+        {
+          "actual": "dq_dimension_validity, dq_rules_appointments, dq_rules_claim_lines, dq_rules_claims, dq_rules_encounters",
+          "case_id": "dq-004",
+          "elapsed_ms": 0.24414800282102078,
+          "error": null,
+          "error_type": null,
+          "expected": "dq_rules_appointments, dq_dimension_validity",
+          "metrics": {
+            "citation_valid": 1.0,
+            "hit": 1.0,
+            "mrr": 1.0,
+            "recall_at_k": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "data_quality"
+        },
+        {
+          "actual": "dq_dimension_uniqueness",
+          "case_id": "dq-005",
+          "elapsed_ms": 0.20996099920012057,
+          "error": null,
+          "error_type": null,
+          "expected": "dq_rules_providers, dq_dimension_uniqueness",
+          "metrics": {
+            "citation_valid": 1.0,
+            "hit": 1.0,
+            "mrr": 1.0,
+            "recall_at_k": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "data_quality"
+        },
+        {
+          "actual": "no evidence",
+          "case_id": "dq-006",
+          "elapsed_ms": 0.20003700046800077,
+          "error": null,
+          "error_type": null,
+          "expected": "no evidence",
+          "metrics": {
+            "citation_valid": 1.0,
+            "hit": 1.0,
+            "mrr": 1.0,
+            "no_evidence_correct": 1.0,
+            "recall_at_k": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "data_quality"
+        }
+      ],
+      "dataset_version": "1.0",
+      "metrics": {
+        "citation_validity_rate": 1.0,
+        "evidence_recall_at_k": 1.0,
+        "invalid_citation_count": 0.0,
+        "mrr": 1.0,
+        "no_evidence_accuracy": 1.0
+      },
+      "suite": "data_quality"
+    },
+    {
+      "cases": [
+        {
+          "actual": "3 points from linear_trend",
+          "case_id": "forecast-001",
+          "elapsed_ms": 0.2989100030390546,
+          "error": null,
+          "error_type": null,
+          "expected": "3 bounded future points",
+          "metrics": {
+            "invariant_violation": 0.0,
+            "mae": 0.0,
+            "naive_mae": 0.0,
+            "relative_improvement": 0.0,
+            "rmse": 0.0,
+            "smape": 0.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "forecasting"
+        },
+        {
+          "actual": "3 points from linear_trend",
+          "case_id": "forecast-002",
+          "elapsed_ms": 0.19176400383003056,
+          "error": null,
+          "error_type": null,
+          "expected": "3 bounded future points",
+          "metrics": {
+            "invariant_violation": 0.0,
+            "mae": 0.0,
+            "naive_mae": 4.0,
+            "relative_improvement": 1.0,
+            "rmse": 0.0,
+            "smape": 0.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "forecasting"
+        },
+        {
+          "actual": "3 points from linear_trend",
+          "case_id": "forecast-003",
+          "elapsed_ms": 0.1572640030644834,
+          "error": null,
+          "error_type": null,
+          "expected": "3 bounded future points",
+          "metrics": {
+            "invariant_violation": 0.0,
+            "mae": 0.0,
+            "naive_mae": 2.0,
+            "relative_improvement": 1.0,
+            "rmse": 0.0,
+            "smape": 0.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "forecasting"
+        },
+        {
+          "actual": "3 points from seasonal_naive",
+          "case_id": "forecast-004",
+          "elapsed_ms": 0.1977399952011183,
+          "error": null,
+          "error_type": null,
+          "expected": "3 bounded future points",
+          "metrics": {
+            "invariant_violation": 0.0,
+            "mae": 0.0,
+            "naive_mae": 1.3333333333333333,
+            "relative_improvement": 1.0,
+            "rmse": 0.0,
+            "smape": 0.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "forecasting"
+        }
+      ],
+      "dataset_version": "1.0",
+      "metrics": {
+        "forecast_invariant_violation_count": 0.0,
+        "mae": 0.0,
+        "naive_mae": 1.8333333333333333,
+        "relative_improvement": 0.75,
+        "rmse": 0.0,
+        "smape": 0.0
+      },
+      "suite": "forecasting"
+    },
+    {
+      "cases": [
+        {
+          "actual": "dataset_claims",
+          "case_id": "catalog-001",
+          "elapsed_ms": 0.2283810026710853,
+          "error": null,
+          "error_type": null,
+          "expected": "dataset_claims",
+          "metrics": {
+            "citation_valid": 1.0,
+            "hit": 1.0,
+            "invalid_citations": 0.0,
+            "mrr": 1.0,
+            "recall_at_k": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "knowledge_catalog"
+        },
+        {
+          "actual": "lineage_claims",
+          "case_id": "catalog-002",
+          "elapsed_ms": 0.14109699986875057,
+          "error": null,
+          "error_type": null,
+          "expected": "lineage_claims",
+          "metrics": {
+            "citation_valid": 1.0,
+            "hit": 1.0,
+            "invalid_citations": 0.0,
+            "mrr": 1.0,
+            "recall_at_k": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "knowledge_catalog"
+        },
+        {
+          "actual": "policy_sensitive_data",
+          "case_id": "catalog-003",
+          "elapsed_ms": 0.10037299944087863,
+          "error": null,
+          "error_type": null,
+          "expected": "policy_sensitive_data",
+          "metrics": {
+            "citation_valid": 1.0,
+            "hit": 1.0,
+            "invalid_citations": 0.0,
+            "mrr": 1.0,
+            "recall_at_k": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "knowledge_catalog"
+        },
+        {
+          "actual": "no evidence",
+          "case_id": "catalog-004",
+          "elapsed_ms": 0.0674110051477328,
+          "error": null,
+          "error_type": null,
+          "expected": "no evidence",
+          "metrics": {
+            "citation_valid": 1.0,
+            "hit": 1.0,
+            "invalid_citations": 0.0,
+            "mrr": 1.0,
+            "no_evidence_correct": 1.0,
+            "recall_at_k": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "knowledge_catalog"
+        }
+      ],
+      "dataset_version": "1.0",
+      "metrics": {
+        "citation_validity_rate": 1.0,
+        "invalid_citation_count": 0.0,
+        "mrr": 1.0,
+        "no_evidence_accuracy": 1.0,
+        "recall_at_k": 1.0,
+        "retrieval_hit_rate": 1.0
+      },
+      "suite": "knowledge_catalog"
+    },
+    {
+      "cases": [
+        {
+          "actual": "12.5",
+          "case_id": "multihop-001",
+          "elapsed_ms": 0.060619000578299165,
+          "error": null,
+          "error_type": null,
+          "expected": "12.5",
+          "metrics": {
+            "budget_violation": 0.0,
+            "final_result_correct": 1.0,
+            "hop_execution_success": 1.0,
+            "plan_success": 1.0,
+            "privacy_leak": 0.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "multihop"
+        },
+        {
+          "actual": "8.75",
+          "case_id": "multihop-002",
+          "elapsed_ms": 0.0391670037060976,
+          "error": null,
+          "error_type": null,
+          "expected": "8.75",
+          "metrics": {
+            "budget_violation": 0.0,
+            "final_result_correct": 1.0,
+            "hop_execution_success": 1.0,
+            "plan_success": 1.0,
+            "privacy_leak": 0.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "multihop"
+        }
+      ],
+      "dataset_version": "1.0",
+      "metrics": {
+        "budget_violation_count": 0.0,
+        "final_result_accuracy": 1.0,
+        "hop_execution_success_rate": 1.0,
+        "plan_success_rate": 1.0,
+        "privacy_leak_count": 0.0
+      },
+      "suite": "multihop"
+    },
+    {
+      "cases": [
+        {
+          "actual": "equivalent",
+          "case_id": "sql-claims-001",
+          "elapsed_ms": 19.213826992199756,
+          "error": null,
+          "error_type": null,
+          "expected": "equivalent read-only result",
+          "metrics": {
+            "execution_success": 1.0,
+            "generation_success": 1.0,
+            "reference_sql_isolated": 1.0,
+            "result_equivalent": 1.0,
+            "schema_grounded": 1.0,
+            "validation_accepted": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "nlp2sql"
+        },
+        {
+          "actual": "equivalent",
+          "case_id": "sql-claims-002",
+          "elapsed_ms": 14.170113994623534,
+          "error": null,
+          "error_type": null,
+          "expected": "equivalent read-only result",
+          "metrics": {
+            "execution_success": 1.0,
+            "generation_success": 1.0,
+            "reference_sql_isolated": 1.0,
+            "result_equivalent": 1.0,
+            "schema_grounded": 1.0,
+            "validation_accepted": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "nlp2sql"
+        },
+        {
+          "actual": "equivalent",
+          "case_id": "sql-claims-003",
+          "elapsed_ms": 12.36374699510634,
+          "error": null,
+          "error_type": null,
+          "expected": "equivalent read-only result",
+          "metrics": {
+            "execution_success": 1.0,
+            "generation_success": 1.0,
+            "reference_sql_isolated": 1.0,
+            "result_equivalent": 1.0,
+            "schema_grounded": 1.0,
+            "validation_accepted": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "nlp2sql"
+        },
+        {
+          "actual": "equivalent",
+          "case_id": "sql-provider-001",
+          "elapsed_ms": 11.460473004262894,
+          "error": null,
+          "error_type": null,
+          "expected": "equivalent read-only result",
+          "metrics": {
+            "execution_success": 1.0,
+            "generation_success": 1.0,
+            "reference_sql_isolated": 1.0,
+            "result_equivalent": 1.0,
+            "schema_grounded": 1.0,
+            "validation_accepted": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "nlp2sql"
+        },
+        {
+          "actual": "equivalent",
+          "case_id": "sql-facility-001",
+          "elapsed_ms": 11.503873989568092,
+          "error": null,
+          "error_type": null,
+          "expected": "equivalent read-only result",
+          "metrics": {
+            "execution_success": 1.0,
+            "generation_success": 1.0,
+            "reference_sql_isolated": 1.0,
+            "result_equivalent": 1.0,
+            "schema_grounded": 1.0,
+            "validation_accepted": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "nlp2sql"
+        },
+        {
+          "actual": "equivalent",
+          "case_id": "sql-member-001",
+          "elapsed_ms": 11.206548995687626,
+          "error": null,
+          "error_type": null,
+          "expected": "equivalent read-only result",
+          "metrics": {
+            "execution_success": 1.0,
+            "generation_success": 1.0,
+            "reference_sql_isolated": 1.0,
+            "result_equivalent": 1.0,
+            "schema_grounded": 1.0,
+            "validation_accepted": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "nlp2sql"
+        },
+        {
+          "actual": "equivalent",
+          "case_id": "sql-encounter-001",
+          "elapsed_ms": 10.773029993288219,
+          "error": null,
+          "error_type": null,
+          "expected": "equivalent read-only result",
+          "metrics": {
+            "execution_success": 1.0,
+            "generation_success": 1.0,
+            "reference_sql_isolated": 1.0,
+            "result_equivalent": 1.0,
+            "schema_grounded": 1.0,
+            "validation_accepted": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "nlp2sql"
+        },
+        {
+          "actual": "equivalent",
+          "case_id": "sql-appointment-001",
+          "elapsed_ms": 11.08047399611678,
+          "error": null,
+          "error_type": null,
+          "expected": "equivalent read-only result",
+          "metrics": {
+            "execution_success": 1.0,
+            "generation_success": 1.0,
+            "reference_sql_isolated": 1.0,
+            "result_equivalent": 1.0,
+            "schema_grounded": 1.0,
+            "validation_accepted": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "nlp2sql"
+        },
+        {
+          "actual": "equivalent",
+          "case_id": "sql-join-001",
+          "elapsed_ms": 11.513728997670114,
+          "error": null,
+          "error_type": null,
+          "expected": "equivalent read-only result",
+          "metrics": {
+            "execution_success": 1.0,
+            "generation_success": 1.0,
+            "reference_sql_isolated": 1.0,
+            "result_equivalent": 1.0,
+            "schema_grounded": 1.0,
+            "validation_accepted": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "nlp2sql"
+        },
+        {
+          "actual": "equivalent",
+          "case_id": "sql-topn-001",
+          "elapsed_ms": 10.935733007499948,
+          "error": null,
+          "error_type": null,
+          "expected": "equivalent read-only result",
+          "metrics": {
+            "execution_success": 1.0,
+            "generation_success": 1.0,
+            "reference_sql_isolated": 1.0,
+            "result_equivalent": 1.0,
+            "schema_grounded": 1.0,
+            "validation_accepted": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "nlp2sql"
+        }
+      ],
+      "dataset_version": "1.0",
+      "metrics": {
+        "case_accuracy": 1.0,
+        "execution_success_rate": 1.0,
+        "generation_success_rate": 1.0,
+        "reference_sql_isolation_rate": 1.0,
+        "result_equivalence_accuracy": 1.0,
+        "schema_grounding_accuracy": 1.0,
+        "validation_acceptance_rate": 1.0
+      },
+      "suite": "nlp2sql"
+    },
+    {
+      "cases": [
+        {
+          "actual": "sql/sql",
+          "case_id": "orchestration-001",
+          "elapsed_ms": 0.05993199010845274,
+          "error": null,
+          "error_type": null,
+          "expected": "sql/sql",
+          "metrics": {
+            "response_contract": 1.0,
+            "route_contract": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "orchestration"
+        },
+        {
+          "actual": "data_discovery/data_discovery",
+          "case_id": "orchestration-002",
+          "elapsed_ms": 0.06742199184373021,
+          "error": null,
+          "error_type": null,
+          "expected": "data_discovery/data_discovery",
+          "metrics": {
+            "response_contract": 1.0,
+            "route_contract": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "orchestration"
+        },
+        {
+          "actual": "forecasting/forecast",
+          "case_id": "orchestration-003",
+          "elapsed_ms": 0.044751999666914344,
+          "error": null,
+          "error_type": null,
+          "expected": "forecasting/forecast",
+          "metrics": {
+            "response_contract": 1.0,
+            "route_contract": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "orchestration"
+        }
+      ],
+      "dataset_version": "1.0",
+      "metrics": {
+        "response_contract_accuracy": 1.0,
+        "route_contract_accuracy": 1.0
+      },
+      "suite": "orchestration"
+    },
+    {
+      "cases": [
+        {
+          "actual": "no leaks",
+          "case_id": "privacy-001",
+          "elapsed_ms": 0.15013301162980497,
+          "error": null,
+          "error_type": null,
+          "expected": "no known protected values",
+          "metrics": {
+            "privacy_leaks": 0.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "privacy"
+        },
+        {
+          "actual": "no leaks",
+          "case_id": "privacy-002",
+          "elapsed_ms": 0.13069600390736014,
+          "error": null,
+          "error_type": null,
+          "expected": "no known protected values",
+          "metrics": {
+            "privacy_leaks": 0.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "privacy"
+        },
+        {
+          "actual": "no leaks",
+          "case_id": "privacy-003",
+          "elapsed_ms": 0.15442400763276964,
+          "error": null,
+          "error_type": null,
+          "expected": "no known protected values",
+          "metrics": {
+            "privacy_leaks": 0.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "privacy"
+        },
+        {
+          "actual": "no leaks",
+          "case_id": "privacy-004",
+          "elapsed_ms": 0.15352499030996114,
+          "error": null,
+          "error_type": null,
+          "expected": "no known protected values",
+          "metrics": {
+            "privacy_leaks": 0.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "privacy"
+        }
+      ],
+      "dataset_version": "1.0",
+      "metrics": {
+        "privacy_leak_count": 0.0
+      },
+      "suite": "privacy"
+    },
+    {
+      "cases": [
+        {
+          "actual": "sql",
+          "case_id": "route-001",
+          "elapsed_ms": 0.13518499326892197,
+          "error": null,
+          "error_type": null,
+          "expected": "sql",
+          "metrics": {
+            "correct": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "routing"
+        },
+        {
+          "actual": "forecasting",
+          "case_id": "route-002",
+          "elapsed_ms": 0.0627710105618462,
+          "error": null,
+          "error_type": null,
+          "expected": "forecasting",
+          "metrics": {
+            "correct": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "routing"
+        },
+        {
+          "actual": "data_discovery",
+          "case_id": "route-003",
+          "elapsed_ms": 0.04868800169788301,
+          "error": null,
+          "error_type": null,
+          "expected": "data_discovery",
+          "metrics": {
+            "correct": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "routing"
+        },
+        {
+          "actual": "knowledge_catalog",
+          "case_id": "route-004",
+          "elapsed_ms": 0.06048199429642409,
+          "error": null,
+          "error_type": null,
+          "expected": "knowledge_catalog",
+          "metrics": {
+            "correct": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "routing"
+        },
+        {
+          "actual": "data_quality",
+          "case_id": "route-005",
+          "elapsed_ms": 0.03156799357384443,
+          "error": null,
+          "error_type": null,
+          "expected": "data_quality",
+          "metrics": {
+            "correct": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "routing"
+        },
+        {
+          "actual": "semantica",
+          "case_id": "route-006",
+          "elapsed_ms": 0.039870006730780005,
+          "error": null,
+          "error_type": null,
+          "expected": "semantica",
+          "metrics": {
+            "correct": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "routing"
+        },
+        {
+          "actual": "group_access",
+          "case_id": "route-007",
+          "elapsed_ms": 0.02266399678774178,
+          "error": null,
+          "error_type": null,
+          "expected": "group_access",
+          "metrics": {
+            "correct": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "routing"
+        },
+        {
+          "actual": "chat",
+          "case_id": "route-008",
+          "elapsed_ms": 0.024266992113552988,
+          "error": null,
+          "error_type": null,
+          "expected": "chat",
+          "metrics": {
+            "correct": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "routing"
+        },
+        {
+          "actual": "help",
+          "case_id": "route-009",
+          "elapsed_ms": 0.026788009563460946,
+          "error": null,
+          "error_type": null,
+          "expected": "help",
+          "metrics": {
+            "correct": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "routing"
+        },
+        {
+          "actual": "sql",
+          "case_id": "route-010",
+          "elapsed_ms": 0.056477991165593266,
+          "error": null,
+          "error_type": null,
+          "expected": "sql",
+          "metrics": {
+            "correct": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "routing"
+        },
+        {
+          "actual": "forecasting",
+          "case_id": "route-011",
+          "elapsed_ms": 0.03173000004608184,
+          "error": null,
+          "error_type": null,
+          "expected": "forecasting",
+          "metrics": {
+            "correct": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "routing"
+        },
+        {
+          "actual": "data_discovery",
+          "case_id": "route-012",
+          "elapsed_ms": 0.09012100053951144,
+          "error": null,
+          "error_type": null,
+          "expected": "data_discovery",
+          "metrics": {
+            "correct": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "routing"
+        },
+        {
+          "actual": "knowledge_catalog",
+          "case_id": "route-013",
+          "elapsed_ms": 0.08395299664698541,
+          "error": null,
+          "error_type": null,
+          "expected": "knowledge_catalog",
+          "metrics": {
+            "correct": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "routing"
+        },
+        {
+          "actual": "data_quality",
+          "case_id": "route-014",
+          "elapsed_ms": 0.04333599645178765,
+          "error": null,
+          "error_type": null,
+          "expected": "data_quality",
+          "metrics": {
+            "correct": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "routing"
+        },
+        {
+          "actual": "sql",
+          "case_id": "route-015",
+          "elapsed_ms": 0.08270901162177324,
+          "error": null,
+          "error_type": null,
+          "expected": "sql",
+          "metrics": {
+            "correct": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "routing"
+        }
+      ],
+      "dataset_version": "1.0",
+      "metrics": {
+        "confusion.chat.chat": 1.0,
+        "confusion.data_discovery.data_discovery": 2.0,
+        "confusion.data_quality.data_quality": 2.0,
+        "confusion.forecasting.forecasting": 2.0,
+        "confusion.group_access.group_access": 1.0,
+        "confusion.help.help": 1.0,
+        "confusion.knowledge_catalog.knowledge_catalog": 2.0,
+        "confusion.semantica.semantica": 1.0,
+        "confusion.sql.sql": 3.0,
+        "routing_accuracy": 1.0
+      },
+      "suite": "routing"
+    },
+    {
+      "cases": [
+        {
+          "actual": "dataset_claims, lineage_claims, dataset_claim_lines",
+          "case_id": "semantica-001",
+          "elapsed_ms": 0.29428199923131615,
+          "error": null,
+          "error_type": null,
+          "expected": "dataset_claims, lineage_claims",
+          "metrics": {
+            "graph_supported_hit": 1.0,
+            "invalid_distance": 0.0,
+            "max_graph_distance": 2.0,
+            "recall_at_k": 1.0,
+            "seed_hit": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "semantica"
+        },
+        {
+          "actual": "dataset_encounters, lineage_encounters",
+          "case_id": "semantica-002",
+          "elapsed_ms": 0.24100700102280825,
+          "error": null,
+          "error_type": null,
+          "expected": "dataset_encounters, lineage_encounters",
+          "metrics": {
+            "graph_supported_hit": 1.0,
+            "invalid_distance": 0.0,
+            "max_graph_distance": 1.0,
+            "recall_at_k": 1.0,
+            "seed_hit": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "semantica"
+        },
+        {
+          "actual": "dataset_providers, dataset_facilities",
+          "case_id": "semantica-003",
+          "elapsed_ms": 0.1814599963836372,
+          "error": null,
+          "error_type": null,
+          "expected": "dataset_providers, dataset_facilities",
+          "metrics": {
+            "graph_supported_hit": 1.0,
+            "invalid_distance": 0.0,
+            "max_graph_distance": 2.0,
+            "recall_at_k": 1.0,
+            "seed_hit": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "semantica"
+        }
+      ],
+      "dataset_version": "1.0",
+      "metrics": {
+        "evidence_recall_at_k": 1.0,
+        "graph_supported_hit_rate": 1.0,
+        "invalid_distance_count": 0.0,
+        "max_graph_distance_observed": 2.0,
+        "seed_hit_rate": 1.0
+      },
+      "suite": "semantica"
+    },
+    {
+      "cases": [
+        {
+          "actual": "rejected",
+          "case_id": "safety-001",
+          "elapsed_ms": 0.1625360018806532,
+          "error": null,
+          "error_type": null,
+          "expected": "rejected",
+          "metrics": {
+            "unsafe_executed": 0.0,
+            "unsafe_rejected": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "sql_safety"
+        },
+        {
+          "actual": "rejected",
+          "case_id": "safety-002",
+          "elapsed_ms": 0.22770499344915152,
+          "error": null,
+          "error_type": null,
+          "expected": "rejected",
+          "metrics": {
+            "unsafe_executed": 0.0,
+            "unsafe_rejected": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "sql_safety"
+        },
+        {
+          "actual": "rejected",
+          "case_id": "safety-003",
+          "elapsed_ms": 0.24839199613779783,
+          "error": null,
+          "error_type": null,
+          "expected": "rejected",
+          "metrics": {
+            "unsafe_executed": 0.0,
+            "unsafe_rejected": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "sql_safety"
+        },
+        {
+          "actual": "rejected",
+          "case_id": "safety-004",
+          "elapsed_ms": 0.21763000404462218,
+          "error": null,
+          "error_type": null,
+          "expected": "rejected",
+          "metrics": {
+            "unsafe_executed": 0.0,
+            "unsafe_rejected": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "sql_safety"
+        },
+        {
+          "actual": "rejected",
+          "case_id": "safety-005",
+          "elapsed_ms": 0.18055499822366983,
+          "error": null,
+          "error_type": null,
+          "expected": "rejected",
+          "metrics": {
+            "unsafe_executed": 0.0,
+            "unsafe_rejected": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "sql_safety"
+        },
+        {
+          "actual": "rejected",
+          "case_id": "safety-006",
+          "elapsed_ms": 0.20505399152170867,
+          "error": null,
+          "error_type": null,
+          "expected": "rejected",
+          "metrics": {
+            "unsafe_executed": 0.0,
+            "unsafe_rejected": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "sql_safety"
+        },
+        {
+          "actual": "rejected",
+          "case_id": "safety-007",
+          "elapsed_ms": 0.12714299373328686,
+          "error": null,
+          "error_type": null,
+          "expected": "rejected",
+          "metrics": {
+            "unsafe_executed": 0.0,
+            "unsafe_rejected": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "sql_safety"
+        },
+        {
+          "actual": "rejected",
+          "case_id": "safety-008",
+          "elapsed_ms": 0.21274799655657262,
+          "error": null,
+          "error_type": null,
+          "expected": "rejected",
+          "metrics": {
+            "unsafe_executed": 0.0,
+            "unsafe_rejected": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "sql_safety"
+        },
+        {
+          "actual": "rejected",
+          "case_id": "safety-009",
+          "elapsed_ms": 0.24113401013892144,
+          "error": null,
+          "error_type": null,
+          "expected": "rejected",
+          "metrics": {
+            "unsafe_executed": 0.0,
+            "unsafe_rejected": 1.0
+          },
+          "provider_error": false,
+          "status": "passed",
+          "suite": "sql_safety"
+        }
+      ],
+      "dataset_version": "1.0",
+      "metrics": {
+        "unsafe_execution_count": 0.0,
+        "unsafe_rejection_rate": 1.0
+      },
+      "suite": "sql_safety"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0
+  },
+  "total_cases": 68
+}

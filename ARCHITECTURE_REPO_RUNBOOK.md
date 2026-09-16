@@ -240,6 +240,36 @@ renderers. Custom context is current-turn only. Group Access is unavailable unti
 exists. Phase 18 adds no Dashboard, authentication, cloud infrastructure, or observability work.
 See `docs/decisions/ADR-018-one-ui-chat-orchestration.md`.
 
+Phase 19 reconstructs the separate AI Dashboard at `#/dashboard`. It calls dedicated
+`/api/dashboards/*` endpoints and never enters ChatMode, Supervisor, advanced reasoning, multi-hop
+SQL, or forecasting. `DashboardService` executes fixed aggregate queries through the existing
+read-only `QueryExecutor`, with bound dates, dataset-relative defaults, bounded category results,
+and aggregate-only response contracts. The React route is lazy-loaded, reuses Recharts and the
+Phase 18 API client, and preserves the mounted chat state while users navigate between surfaces.
+No LLM, AWS configuration, export, patient drilldown, or Phase 20 evaluation work is included.
+See `docs/ai-dashboard.md` and `docs/decisions/ADR-019-ai-dashboard.md`.
+
+Phase 20 adds a local evaluation sidecar under `backend/app/evaluation` with 68 versioned synthetic
+cases under `backend/evals`. Offline, integration, and optional live profiles measure observable
+routing, semantic SQL results, read-only safety, retrieval evidence, graph/tool/hop bounds,
+forecast math, orchestration contracts, and privacy. Reports are JSON plus Markdown and may be
+compared with an explicitly reviewed baseline. The evaluator is not in the production request path,
+does not ingest production conversations, and introduces no UI or Phase 21 authorization work. See
+`docs/evaluation.md` and `docs/decisions/ADR-020-evaluation-regression-framework.md`.
+
+Phase 21 adds provider-neutral authentication and deterministic RBAC. Local development uses one
+configured identity only in local/development/test environments. Production-style OIDC mode uses
+PyJWT with issuer JWKS, explicit algorithms, issuer, expiration, optional audience/not-before/token
+use, and required-subject validation. Normalized `AuthPrincipal` values feed explicit
+viewer/analyst/admin permission composition. API routes, post-Supervisor specialist dispatch, SQL
+execution, forecasting, multi-hop SQL, dashboards, and advanced tools enforce permissions in the
+backend. Advanced tools are removed before planning and checked again at execution. Session keys
+now combine authenticated subject, browser cookie, and tab ID, preventing cross-user history, SQL,
+and token-mapping inheritance. Group Access is deterministic current-user introspection with no LLM
+or directory search. The React UI loads `/api/auth/me` and filters navigation for usability but is
+not the security boundary. No passwords, Cognito resources, AWS calls, or browser token storage are
+introduced. See `docs/authentication-authorization.md` and ADR-021.
+
 Forecasting: `ForecastingAgent` produces projections/outlooks from historical data as its own specialist, reached from the same Data Intelligence surface.
 
 ## AI Dashboard (separate tool)

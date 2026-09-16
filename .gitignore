@@ -46,3 +46,6 @@ backend/artifacts/sessions/
 # Generated local Knowledge Catalog indexes and manifests
 backend/artifacts/knowledge_catalog/
 backend/artifacts/semantica/
+
+# Generated evaluation run artifacts (reviewed baselines remain under backend/evals/)
+backend/artifacts/evaluation/runs/

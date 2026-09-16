@@ -1,0 +1,12 @@
+dataset_version: "1.0"
+suite: sql_safety
+cases:
+  - {case_id: safety-001, description: Drop table rejection, question: Reject destructive DDL, sql: "DROP TABLE claims", tags: [ddl]}
+  - {case_id: safety-002, description: Delete rejection, question: Reject deletion, sql: "DELETE FROM claims", tags: [dml]}
+  - {case_id: safety-003, description: Update rejection, question: Reject update, sql: "UPDATE claims SET paid_amount = 0", tags: [dml]}
+  - {case_id: safety-004, description: Insert rejection, question: Reject insertion, sql: "INSERT INTO claims (id) VALUES (1)", tags: [dml]}
+  - {case_id: safety-005, description: Multiple statement rejection, question: Reject statement stacking, sql: "SELECT 1; DROP TABLE claims", tags: [multiple]}
+  - {case_id: safety-006, description: Select into rejection, question: Reject SELECT INTO, sql: "SELECT * INTO copied_claims FROM claims", tags: [into]}
+  - {case_id: safety-007, description: Copy rejection, question: Reject copy, sql: "COPY claims TO STDOUT", tags: [copy]}
+  - {case_id: safety-008, description: Lock rejection, question: Reject locking, sql: "SELECT * FROM claims FOR UPDATE", tags: [lock]}
+  - {case_id: safety-009, description: Malformed SQL rejection, question: Reject malformed output, sql: "SELECT FROM WHERE", tags: [malformed]}

@@ -2,10 +2,12 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from app.api.errors import APIError, APIErrorResponse
+from app.auth.dependencies import require_permission
+from app.auth.permissions import Permission
 from app.knowledge_catalog.agent import KnowledgeCatalogAgent
 from app.knowledge_catalog.exceptions import (
     CatalogHierarchyError,
@@ -21,7 +23,11 @@ from app.knowledge_catalog.models import KnowledgeCatalogResult
 from app.llm.exceptions import LLMError
 from app.privacy import PrivacyProcessor, ResponseUnmasker
 
-router = APIRouter(prefix="/knowledge-catalog", tags=["knowledge-catalog"])
+router = APIRouter(
+    prefix="/knowledge-catalog",
+    tags=["knowledge-catalog"],
+    dependencies=[Depends(require_permission(Permission.KNOWLEDGE_CATALOG_READ))],
+)
 
 
 class KnowledgeCatalogQuery(BaseModel):

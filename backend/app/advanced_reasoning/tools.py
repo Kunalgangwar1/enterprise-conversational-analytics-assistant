@@ -16,6 +16,7 @@ from app.advanced_reasoning.models import (
     ToolPlanStep,
 )
 from app.advanced_reasoning.security import contains_disallowed_executable_content
+from app.auth.permissions import Permission
 from app.core.feature_flags import ToolFeatureFlags
 from app.data_discovery.search import DataDiscoveryService
 from app.data_quality.agent import DataQualityAgent
@@ -62,6 +63,25 @@ class AdvancedToolRegistry:
         self._enabled_names = (
             frozenset(by_name) if enabled_tool_names is None else frozenset(enabled_tool_names)
         )
+
+    def authorized(self, permissions: frozenset[Permission]) -> AdvancedToolRegistry:
+        """Return a request-scoped registry with unauthorized tools removed up front."""
+
+        authorized_names = {
+            name
+            for name in self._enabled_names
+            if _TOOL_PERMISSIONS.get(name, frozenset()) <= permissions
+        }
+        return AdvancedToolRegistry(
+            self._tools.values(),
+            agent_registry=self._agent_registry,
+            enabled_tool_names=authorized_names,
+        )
+
+    def available_names(self) -> tuple[str, ...]:
+        """Return stable authorized names for tests and planner composition."""
+
+        return tuple(name for name in sorted(self._tools) if self.is_available(name))
 
     def is_available(self, tool_name: str) -> bool:
         tool = self._tools.get(tool_name)
@@ -311,3 +331,13 @@ class SemanticaTool:
             summary=result.answer,
             citations=tuple(item.id for item in result.citations),
         )
+
+
+_TOOL_PERMISSIONS: dict[str, frozenset[Permission]] = {
+    "sql": frozenset({Permission.SQL_GENERATE, Permission.SQL_EXECUTE, Permission.SQL_ADVANCED}),
+    "forecasting": frozenset({Permission.FORECAST_RUN}),
+    "knowledge_catalog": frozenset({Permission.KNOWLEDGE_CATALOG_READ}),
+    "data_discovery": frozenset({Permission.DATA_DISCOVERY_READ}),
+    "data_quality": frozenset({Permission.DATA_QUALITY_READ}),
+    "semantica": frozenset({Permission.SEMANTICA_READ}),
+}

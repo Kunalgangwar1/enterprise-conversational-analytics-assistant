@@ -1,10 +1,11 @@
 """Public API endpoints for safe feature flag subsets."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.auth.dependencies import require_authenticated
 from app.core.feature_flags import ToolFeatureFlags, UIFeatureFlags, get_feature_flags
 
-router = APIRouter(tags=["feature-flags"])
+router = APIRouter(tags=["feature-flags"], dependencies=[Depends(require_authenticated)])
 
 
 @router.get("/ui-feature-flags", response_model=UIFeatureFlags)

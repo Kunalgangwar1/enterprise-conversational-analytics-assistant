@@ -6,6 +6,11 @@ from time import monotonic
 from app.advanced_reasoning.models import ReasoningExecutionMode
 from app.advanced_reasoning.planner import AdvancedReasoningPlanner
 from app.advanced_reasoning.policy import ReasoningPromotionPolicy
+from app.auth.authorization import AuthorizationService
+from app.auth.exceptions import PermissionDeniedError
+from app.auth.group_access import GroupAccessService
+from app.auth.models import AuthPrincipal
+from app.auth.permissions import Permission
 from app.chat.exceptions import (
     ChatSQLGenerationError,
     InvalidChatStrategyError,
@@ -19,6 +24,7 @@ from app.chat.models import (
     ChatTurnResult,
     DiscoveryChatResponse,
     ForecastChatResponse,
+    GroupAccessChatResponse,
     MessageChatResponse,
     RAGChatPayload,
     RAGChatResponse,
@@ -49,6 +55,8 @@ class ChatOrchestrator:
         advanced_planner: AdvancedReasoningPlanner | None = None,
         privacy_processor: PrivacyProcessor | None = None,
         response_unmasker: ResponseUnmasker | None = None,
+        authorization_service: AuthorizationService | None = None,
+        group_access_service: GroupAccessService | None = None,
         clock: Callable[[], float] = monotonic,
     ) -> None:
         self._supervisor = supervisor
@@ -58,13 +66,21 @@ class ChatOrchestrator:
         self._advanced_planner = advanced_planner
         self._privacy = privacy_processor or PrivacyProcessor()
         self._unmasker = response_unmasker or ResponseUnmasker()
+        self._authorization = authorization_service or AuthorizationService()
+        self._group_access = group_access_service or GroupAccessService()
         self._clock = clock
 
-    def run(self, request: ChatRequest, state: SessionState) -> ChatTurnResult:
+    def run(
+        self,
+        request: ChatRequest,
+        state: SessionState,
+        principal: AuthPrincipal,
+    ) -> ChatTurnResult:
         """Run one turn from raw input to a typed response and safe persistence values."""
 
         started = self._clock()
-        privacy = self._privacy.process(self._with_current_context(request))
+        current_question = self._with_current_context(request)
+        privacy = self._privacy.process(current_question)
         decision = self._supervisor.route(privacy.safe_text, state.selected_mode)
         strategy = self._strategy(request, state.selected_mode)
 
@@ -72,6 +88,8 @@ class ChatOrchestrator:
             if strategy is SQLStrategy.STANDARD:
                 decision = decision.model_copy(update={"route": InternalRoute.SQL})
             elif strategy is SQLStrategy.ADVANCED:
+                self._require(principal, Permission.SQL_GENERATE)
+                self._require(principal, Permission.SQL_ADVANCED)
                 return self._run_multihop(
                     privacy.safe_text,
                     state,
@@ -81,6 +99,7 @@ class ChatOrchestrator:
             elif strategy is SQLStrategy.FORECASTING:
                 decision = decision.model_copy(update={"route": InternalRoute.FORECASTING})
 
+        self._require(principal, _ROUTE_PERMISSIONS[decision.route])
         if self._should_promote(decision):
             return self._run_generic_advanced(
                 privacy.safe_text,
@@ -88,6 +107,7 @@ class ChatOrchestrator:
                 decision,
                 privacy.token_mappings,
                 started,
+                principal,
             )
         return self._run_standard_route(
             privacy.safe_text,
@@ -95,6 +115,8 @@ class ChatOrchestrator:
             decision.route,
             privacy.token_mappings,
             started,
+            principal,
+            current_question,
         )
 
     @staticmethod
@@ -132,6 +154,8 @@ class ChatOrchestrator:
         route: InternalRoute,
         mappings: Sequence[TokenMappingEntry],
         started: float,
+        principal: AuthPrincipal,
+        current_question: str,
     ) -> ChatTurnResult:
         if route is InternalRoute.SQL:
             return self._run_standard_sql(safe_question, state, mappings, started)
@@ -232,8 +256,24 @@ class ChatOrchestrator:
             )
             return ChatTurnResult(response=response, token_mappings=tuple(mappings))
         if route is InternalRoute.GROUP_ACCESS:
-            raise SpecialistUnavailableError(
-                "Group Access is not implemented in this reconstruction"
+            try:
+                result = self._group_access.inspect_self(current_question, principal)
+            except ValueError as exc:
+                raise PermissionDeniedError(
+                    "Group Access supports only current-principal inspection"
+                ) from exc
+            content = "Your effective access includes: " + ", ".join(
+                permission.value for permission in result.effective_permissions
+            )
+            return ChatTurnResult(
+                response=GroupAccessChatResponse(
+                    selected_mode=state.selected_mode,
+                    route=route,
+                    content=content,
+                    latency_ms=self._elapsed(started),
+                    payload=result,
+                ),
+                token_mappings=tuple(mappings),
             )
         if route in {InternalRoute.CHAT, InternalRoute.HELP}:
             content = self._deterministic_message(route)
@@ -303,10 +343,14 @@ class ChatOrchestrator:
         decision: SupervisorDecision,
         mappings: Sequence[TokenMappingEntry],
         started: float,
+        principal: AuthPrincipal,
     ) -> ChatTurnResult:
         if self._advanced_planner is None:
             raise SpecialistUnavailableError("Advanced reasoning is not currently available")
-        result = self._advanced_planner.run(safe_question, decision)
+        result = self._advanced_planner.for_permissions(principal.permissions).run(
+            safe_question,
+            decision,
+        )
         content = self._unmasker.unmask(result.answer, mappings)
         response = AdvancedChatResponse(
             selected_mode=state.selected_mode,
@@ -326,3 +370,19 @@ class ChatOrchestrator:
 
     def _elapsed(self, started: float) -> float:
         return max(0.0, (self._clock() - started) * 1_000)
+
+    def _require(self, principal: AuthPrincipal, permission: Permission) -> None:
+        self._authorization.require_permission(principal, permission)
+
+
+_ROUTE_PERMISSIONS: dict[InternalRoute, Permission] = {
+    InternalRoute.GROUP_ACCESS: Permission.GROUP_ACCESS_READ_SELF,
+    InternalRoute.SQL: Permission.SQL_GENERATE,
+    InternalRoute.FORECASTING: Permission.FORECAST_RUN,
+    InternalRoute.CHAT: Permission.CHAT_USE,
+    InternalRoute.HELP: Permission.CHAT_USE,
+    InternalRoute.DATA_DISCOVERY: Permission.DATA_DISCOVERY_READ,
+    InternalRoute.KNOWLEDGE_CATALOG: Permission.KNOWLEDGE_CATALOG_READ,
+    InternalRoute.SEMANTICA: Permission.SEMANTICA_READ,
+    InternalRoute.DATA_QUALITY: Permission.DATA_QUALITY_READ,
+}

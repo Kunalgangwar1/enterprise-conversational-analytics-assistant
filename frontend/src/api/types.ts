@@ -9,6 +9,32 @@ export type ChatMode =
 
 export type SqlStrategy = "auto" | "standard" | "advanced" | "forecasting";
 
+export type AppRole = "viewer" | "analyst" | "admin";
+
+export type Permission =
+  | "chat.use"
+  | "dashboard.read"
+  | "data_discovery.read"
+  | "knowledge_catalog.read"
+  | "data_quality.read"
+  | "semantica.read"
+  | "sql.generate"
+  | "sql.execute"
+  | "sql.advanced"
+  | "forecast.run"
+  | "group_access.read_self"
+  | "admin.authorization.read";
+
+export interface AuthPrincipal {
+  subject: string;
+  email: string | null;
+  display_name: string | null;
+  roles: AppRole[];
+  groups: string[];
+  permissions: Permission[];
+  auth_method: "development" | "oidc";
+}
+
 export interface UiFeatureFlags {
   follow_up_questions_show: boolean;
   context_button: boolean;
@@ -83,6 +109,14 @@ export interface AdvancedPayload {
   deltas: DeltaPayload[];
 }
 
+export interface GroupAccessPayload {
+  display_name: string | null;
+  roles: AppRole[];
+  groups: string[];
+  effective_permissions: Permission[];
+  capability_summaries: string[];
+}
+
 export interface ForecastMetric {
   mae: number;
   rmse: number;
@@ -138,7 +172,8 @@ export type ChatResponse =
       payload: RagPayload;
     })
   | (ChatResponseBase & { response_type: "advanced"; payload: AdvancedPayload })
-  | (ChatResponseBase & { response_type: "forecast"; payload: ForecastPayload });
+  | (ChatResponseBase & { response_type: "forecast"; payload: ForecastPayload })
+  | (ChatResponseBase & { response_type: "group_access"; payload: GroupAccessPayload });
 
 export type ResultCell = string | number | boolean | null;
 
@@ -163,4 +198,62 @@ export interface SqlExecutionResult {
 
 export interface ApiErrorEnvelope {
   error: { code: string; message: string };
+}
+
+export type DashboardUnit = "count" | "currency";
+
+export interface DashboardResponseBase {
+  start_date: string;
+  end_date: string;
+  data_as_of: string;
+  available_start_date: string;
+  available_end_date: string;
+  has_data: boolean;
+}
+
+export interface DashboardKPI {
+  id: string;
+  label: string;
+  value: number;
+  unit: DashboardUnit;
+  comparison: number | null;
+  comparison_label: string | null;
+}
+
+export interface DashboardOverview extends DashboardResponseBase {
+  kpis: DashboardKPI[];
+}
+
+export interface ClaimsTrendPoint {
+  period: string;
+  claim_count: number;
+  paid_amount: number;
+  allowed_amount: number;
+}
+
+export interface CategoryMetric {
+  category: string;
+  count: number;
+  amount: number | null;
+  average_amount: number | null;
+}
+
+export interface ClaimsDashboard extends DashboardResponseBase {
+  monthly_trend: ClaimsTrendPoint[];
+  status_distribution: CategoryMetric[];
+  specialty_breakdown: CategoryMetric[];
+  facility_breakdown: CategoryMetric[];
+}
+
+export interface TimeSeriesPoint {
+  period: string;
+  value: number;
+}
+
+export interface OperationsDashboard extends DashboardResponseBase {
+  encounters_by_month: TimeSeriesPoint[];
+  appointments_by_month: TimeSeriesPoint[];
+  appointment_status_distribution: CategoryMetric[];
+  encounter_type_distribution: CategoryMetric[];
+  appointments_by_specialty: CategoryMetric[];
 }

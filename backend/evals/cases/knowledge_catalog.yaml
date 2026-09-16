@@ -1,0 +1,7 @@
+dataset_version: "1.0"
+suite: knowledge_catalog
+cases:
+  - {case_id: catalog-001, description: Claims dataset evidence, question: "Describe the claims dataset and its aggregate monetary measures.", expected_evidence_ids: [dataset_claims], tags: [claims]}
+  - {case_id: catalog-002, description: Claims lineage evidence, question: "Explain the governed lineage of claims.", expected_evidence_ids: [lineage_claims], tags: [lineage]}
+  - {case_id: catalog-003, description: Sensitive data policy evidence, question: "What policy covers handling sensitive synthetic fields?", expected_evidence_ids: [policy_sensitive_data], tags: [policy]}
+  - {case_id: catalog-004, description: Correct no-evidence outcome, question: "Explain the proprietary lunar inventory feed.", expect_no_evidence: true, tags: [no_evidence]}

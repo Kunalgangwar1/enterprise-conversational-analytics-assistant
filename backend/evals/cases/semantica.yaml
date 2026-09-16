@@ -1,0 +1,6 @@
+dataset_version: "1.0"
+suite: semantica
+cases:
+  - {case_id: semantica-001, description: Claims graph expansion, question: "Use Semantica for claims lineage.", seed_node_id: dataset_claims, acceptable_evidence_ids: [dataset_claims, lineage_claims], k: 12, tags: [claims, graph]}
+  - {case_id: semantica-002, description: Encounter graph expansion, question: "Use Semantica for encounter lineage.", seed_node_id: dataset_encounters, acceptable_evidence_ids: [dataset_encounters, lineage_encounters], k: 12, tags: [encounters, graph]}
+  - {case_id: semantica-003, description: Provider relationship evidence, question: "Use Semantica to explore provider relationships.", seed_node_id: dataset_providers, acceptable_evidence_ids: [dataset_providers, dataset_facilities], k: 12, tags: [provider, graph]}

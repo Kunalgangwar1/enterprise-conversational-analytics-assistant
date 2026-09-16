@@ -1,6 +1,8 @@
 """Execute server-owned accepted SQL for one browser-session/tab."""
 
-from fastapi import APIRouter, Request, Response
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Request, Response
 
 from app.api.errors import APIError, APIErrorResponse
 from app.api.session_context import (
@@ -9,6 +11,9 @@ from app.api.session_context import (
     session_storage_api_error,
     set_browser_cookie,
 )
+from app.auth.dependencies import require_permission
+from app.auth.models import AuthPrincipal
+from app.auth.permissions import Permission
 from app.db.query.exceptions import (
     QueryConfigurationError,
     QueryExecutionError,
@@ -24,6 +29,10 @@ from app.sql_results.service import SQLExecutionService
 from app.sql_results.token_resolver import token_mappings_from_session
 
 router = APIRouter(prefix="/chat", tags=["sql-execution"])
+SQLPrincipal = Annotated[
+    AuthPrincipal,
+    Depends(require_permission(Permission.SQL_EXECUTE)),
+]
 
 
 @router.post(
@@ -36,14 +45,18 @@ router = APIRouter(prefix="/chat", tags=["sql-execution"])
         504: {"model": APIErrorResponse},
     },
 )
-def execute_sql(request: Request, response: Response) -> SQLAnalyticsResult:
+def execute_sql(
+    request: Request,
+    response: Response,
+    principal: SQLPrincipal,
+) -> SQLAnalyticsResult:
     """Execute only the accepted SQL stored by trusted server-side orchestration."""
 
-    settings, resolved = resolve_request_identity(request)
+    settings, resolved = resolve_request_identity(request, principal)
     try:
         state = get_session_service(request).get_or_create(resolved.identity)
     except SessionStoreError as exc:
-        raise session_storage_api_error() from exc
+        raise session_storage_api_error(exc) from exc
 
     if state.last_generated_sql is None:
         raise APIError(

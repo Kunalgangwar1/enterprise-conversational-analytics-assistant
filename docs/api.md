@@ -4,12 +4,24 @@ The backend uses a central FastAPI application contract and route composition. I
 are mounted below `/api`; stateful conversation-control endpoints use `/chat`. The OpenAPI UI is
 available at `/docs` when the development server is running.
 
+Except for `GET /api/health`, application endpoints require an authenticated principal. OpenAPI
+marks protected operations with bearer security. Missing/invalid authentication returns HTTP 401
+`authentication_required`; authenticated callers without the required permission receive HTTP 403
+`permission_denied`.
+
 ## Implemented endpoints
 
 ### `GET /api/health`
 
 Reports process availability, application name, and configured environment. This is a process
 health check; it does not connect to PostgreSQL or verify downstream services.
+
+### `GET /api/auth/me`
+
+Returns the current normalized subject, optional display name/email, roles, groups, effective
+permissions, and authentication method. It never returns raw JWTs, token signatures, refresh
+tokens, or provider claims. Development mode supplies the configured identity automatically;
+OIDC mode requires a valid signed bearer token.
 
 ### `GET /api/ui-feature-flags`
 
@@ -80,7 +92,7 @@ engine, query executor, metadata registry, session store, or LLM client.
 
 ### `POST /chat/select-mode`
 
-Selects and persists a canonical mode for the current browser-session/tab pair.
+Selects and persists a canonical mode for the current authenticated-subject/browser/tab identity.
 
 ```json
 {
@@ -103,7 +115,7 @@ modes return the existing `invalid_chat_mode` error envelope. No agent is execut
 
 ### `POST /chat/reset`
 
-Clears conversational fields for the current browser-session/tab pair while preserving its selected
+Clears conversational fields for the current authenticated-subject/browser/tab identity while preserving its selected
 mode. A successful response is:
 
 ```json
@@ -138,8 +150,9 @@ executing it. The browser can subsequently call `POST /chat/execute-sql` with no
 endpoint loads the current tab's accepted SQL and token mapping and retains the Phase 13
 read-only-execution boundary.
 
-Group Access returns a controlled `specialist_unavailable` error until a real specialist is
-implemented. LLM-backed modes return safe provider/configuration errors; deterministic chat/help
+Group Access deterministically returns only the current principal's roles, groups, effective
+permissions, and capability summaries; it does not call an LLM or support other-user lookup.
+LLM-backed modes return safe provider/configuration errors; deterministic chat/help
 and Data Discovery do not require model or cloud credentials.
 
 ### Phase 15 specialist queries
@@ -153,8 +166,30 @@ contain vectors, adjacency data, AI configuration, provider payloads, privacy ma
 rows. These request-scoped endpoints do not require sessions and do not implement conversational
 follow-up state.
 
+### Phase 19 aggregate dashboards
+
+- `GET /api/dashboards/overview`
+- `GET /api/dashboards/claims`
+- `GET /api/dashboards/operations`
+
+Each accepts optional `start_date` and `end_date` ISO query parameters. Omitted values derive a
+12-calendar-month range from the latest available synthetic business date. Responses contain only
+typed aggregates and never accept SQL, free text, patient/member rows, or privacy mappings.
+Dashboard calls are session-independent and do not pass through chat orchestration. See
+[`ai-dashboard.md`](ai-dashboard.md).
+
+Permission highlights:
+
+- Chat/select/reset/welcome: `chat.use`
+- Dashboard APIs: `dashboard.read`
+- Specialist APIs: their corresponding `*.read` permission
+- Standard SQL generation: `sql.generate`
+- SQL execution: `sql.execute`
+- Multi-hop advanced SQL: `sql.advanced` plus base SQL generation policy
+- Forecasting: `forecast.run`
+
 ## Not implemented
 
 `POST /api/custom-context` is not implemented. Phase 18 supplies context in the current `POST /chat`
-request instead, without durable storage. Dashboard, authentication, and production-cloud APIs
-remain outside this phase.
+request instead, without durable storage. Password login, registration, hosted OIDC redirects,
+user administration, and production-cloud management APIs are not implemented.

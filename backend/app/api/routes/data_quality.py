@@ -2,10 +2,12 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from app.api.errors import APIError, APIErrorResponse
+from app.auth.dependencies import require_permission
+from app.auth.permissions import Permission
 from app.data_quality.agent import DataQualityAgent
 from app.data_quality.exceptions import DataQualityError
 from app.data_quality.factory import build_data_quality_agent
@@ -13,7 +15,11 @@ from app.data_quality.models import DataQualityResult
 from app.llm.exceptions import LLMError
 from app.privacy import PrivacyProcessor, ResponseUnmasker
 
-router = APIRouter(prefix="/data-quality", tags=["data-quality"])
+router = APIRouter(
+    prefix="/data-quality",
+    tags=["data-quality"],
+    dependencies=[Depends(require_permission(Permission.DATA_QUALITY_READ))],
+)
 
 
 class DataQualityQuery(BaseModel):

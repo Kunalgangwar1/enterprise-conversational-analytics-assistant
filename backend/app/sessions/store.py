@@ -1,9 +1,12 @@
-"""Persistence abstraction for typed session state."""
+"""Persistence abstraction for typed, atomically mutated session state."""
 
+from collections.abc import Callable
 from typing import Protocol
 
 from app.sessions.identity import SessionIdentity
 from app.sessions.models import SessionState
+
+SessionMutation = Callable[[SessionState | None], SessionState]
 
 
 class SessionStore(Protocol):
@@ -19,7 +22,21 @@ class SessionStore(Protocol):
 
         ...
 
+    def update(
+        self,
+        identity: SessionIdentity,
+        mutation: SessionMutation,
+    ) -> SessionState:
+        """Atomically apply a state mutation and return the persisted result."""
+
+        ...
+
     def delete(self, identity: SessionIdentity) -> None:
         """Delete a state if it exists."""
+
+        ...
+
+    def close(self) -> None:
+        """Release backend resources."""
 
         ...

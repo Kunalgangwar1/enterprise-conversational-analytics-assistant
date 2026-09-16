@@ -1,5 +1,6 @@
 """Database-independent query executor contract."""
 
+from collections.abc import Mapping
 from typing import Protocol, runtime_checkable
 
 from app.db.query.models import QueryExecutionResult
@@ -13,8 +14,9 @@ class QueryExecutor(Protocol):
         self,
         sql: str,
         *,
+        parameters: Mapping[str, object] | None = None,
         max_rows: int | None = None,
         timeout_ms: int | None = None,
     ) -> QueryExecutionResult:
-        """Execute one read-only SQL statement with optional stricter limits."""
+        """Execute one read-only SQL statement with optional bound values and stricter limits."""
         ...

@@ -1,0 +1,9 @@
+dataset_version: "1.0"
+suite: data_quality
+cases:
+  - {case_id: dq-001, description: Completeness guidance, question: "What completeness checks apply to missing values?", expected_evidence_ids: [dq_dimension_completeness], tags: [completeness]}
+  - {case_id: dq-002, description: Freshness guidance, question: "How should data freshness be assessed?", expected_evidence_ids: [dq_dimension_freshness], tags: [freshness]}
+  - {case_id: dq-003, description: Claims rules, question: "Which quality rules apply to claims?", expected_evidence_ids: [dq_rules_claims], tags: [claims]}
+  - {case_id: dq-004, description: Appointment rules, question: "Which validity rules apply to appointments?", acceptable_evidence_ids: [dq_rules_appointments, dq_dimension_validity], tags: [appointments, validity]}
+  - {case_id: dq-005, description: Provider rules, question: "How are provider records checked for uniqueness?", acceptable_evidence_ids: [dq_rules_providers, dq_dimension_uniqueness], tags: [providers, uniqueness]}
+  - {case_id: dq-006, description: Correct no-evidence outcome, question: "What rule governs lunar inventory telemetry?", expect_no_evidence: true, tags: [no_evidence]}

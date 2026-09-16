@@ -24,6 +24,7 @@ from app.advanced_reasoning.models import (
 )
 from app.advanced_reasoning.state import AdvancedReasoningState
 from app.advanced_reasoning.tools import AdvancedToolRegistry, validate_and_order_plan
+from app.auth.permissions import Permission
 from app.core.feature_flags import ReasoningFeatureFlags
 from app.llm.base import LLMClient
 from app.llm.exceptions import LLMError
@@ -227,6 +228,11 @@ class AdvancedReasoningPlanner:
         max_tool_calls: int = 5,
         max_replans: int = 1,
     ) -> None:
+        self._llm_client = llm_client
+        self._tool_registry = tool_registry
+        self._max_subtasks = max_subtasks
+        self._max_tool_calls = max_tool_calls
+        self._max_replans = max_replans
         nodes = AdvancedReasoningNodes(
             llm_client,
             tool_registry,
@@ -235,6 +241,20 @@ class AdvancedReasoningPlanner:
             max_replans=max_replans,
         )
         self._graph = build_advanced_reasoning_graph(nodes)
+
+    def for_permissions(
+        self,
+        permissions: frozenset[Permission],
+    ) -> "AdvancedReasoningPlanner":
+        """Create an isolated planner whose prompt and executor see only authorized tools."""
+
+        return AdvancedReasoningPlanner(
+            self._llm_client,
+            self._tool_registry.authorized(permissions),
+            max_subtasks=self._max_subtasks,
+            max_tool_calls=self._max_tool_calls,
+            max_replans=self._max_replans,
+        )
 
     @classmethod
     def from_flags(

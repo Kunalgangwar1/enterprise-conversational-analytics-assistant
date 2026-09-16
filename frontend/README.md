@@ -28,8 +28,14 @@ npm run build
 server proxies `/api` and `/chat` to `http://localhost:8000`. A production build is written to
 `dist/` and can use the build-time `API_BASE_URL`; an empty value uses same-origin relative URLs.
 
-The app uses `HashRouter`. Phase 18 serves the primary chat route at `#/`; the routing foundation
-can accept a later `#/dashboard` route without implementing that Phase 19 feature now.
+The app uses `HashRouter` and provides two separate surfaces:
+
+- Chat: `http://localhost:5173/#/`
+- AI Dashboard: `http://localhost:5173/#/dashboard`
+
+Dashboard is lazy-loaded, calls `/api/dashboards/*`, uses deterministic aggregate data, and does
+not enter chat routing or automatically invoke forecasting. Navigation preserves the mounted chat
+state in the current tab.
 
 ## Sessions and feature flags
 
@@ -41,6 +47,12 @@ placing the server cookie identifier in application state.
 At startup the app loads `/api/ui-feature-flags` and `/api/tool-flags`. These flags control visible
 features such as current-turn context, follow-up chips, latency, and tool availability; they are
 not an authorization mechanism. Mode descriptions and welcome content come from the backend.
+
+Phase 21 first loads `/api/auth/me` through `AuthProvider`. Development authentication needs no
+browser token. The UI displays the configured principal and filters Dashboard, modes, Advanced,
+and Forecasting using effective permissions, but backend checks remain authoritative. A 401 shows
+an Authentication required state for future OIDC integration. The frontend stores no access or
+refresh token in localStorage/sessionStorage; `eca_tab_id` remains the only sessionStorage value.
 
 ## SQL safety boundary
 

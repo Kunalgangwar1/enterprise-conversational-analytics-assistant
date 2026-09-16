@@ -1,0 +1,26 @@
+dataset_version: "1.0"
+suite: advanced_reasoning
+cases:
+  - case_id: advanced-001
+    description: SQL then catalog tool plan
+    question: Compare an aggregate claim result with its catalog definition.
+    tool_names: [sql, knowledge_catalog]
+    expected_tool_names: [sql, knowledge_catalog]
+    forbidden_tools: [forecasting]
+    maximum_tool_calls: 2
+    tags: [bounded, dependencies]
+  - case_id: advanced-002
+    description: Discovery then quality tool plan
+    question: Find the appointment dataset and retrieve its quality rules.
+    tool_names: [data_discovery, data_quality]
+    expected_tool_names: [data_discovery, data_quality]
+    maximum_tool_calls: 2
+    tags: [bounded]
+  - case_id: advanced-003
+    description: Graph evidence tool plan
+    question: Use relationship-aware evidence for encounter lineage.
+    tool_names: [semantica]
+    expected_tool_names: [semantica]
+    maximum_tool_calls: 1
+    reflection_expected: true
+    tags: [graph, reflection]

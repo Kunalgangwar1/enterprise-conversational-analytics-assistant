@@ -52,6 +52,21 @@ interface FetchOptions {
 function installFetch(options: FetchOptions = {}) {
   return jest.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
     const url = String(input);
+    if (url === "/api/auth/me") {
+      return jsonResponse({
+        subject: "dev-user",
+        email: "developer@example.invalid",
+        display_name: "Local Developer",
+        roles: ["analyst"],
+        groups: [],
+        permissions: [
+          "chat.use", "dashboard.read", "data_discovery.read", "knowledge_catalog.read",
+          "data_quality.read", "semantica.read", "group_access.read_self", "sql.generate",
+          "sql.execute", "sql.advanced", "forecast.run",
+        ],
+        auth_method: "development",
+      });
+    }
     if (url === "/api/ui-feature-flags") return jsonResponse(options.ui ?? uiFlags);
     if (url === "/api/tool-flags") return jsonResponse(options.tools ?? toolFlags);
     if (url.startsWith("/api/chat-mode/welcome")) {
@@ -109,8 +124,8 @@ describe("One UI", () => {
   test("renders through HashRouter with backend-enabled modes and welcome", async () => {
     installFetch();
     renderApp();
-    expect(screen.getByRole("heading", { name: "Conversational Assistant" })).toBeInTheDocument();
     expect(await screen.findByText("Backend welcome for auto")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Conversational Assistant" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Data Discovery" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Group Access" })).toBeDisabled();
     expect(window.location.hash).toBe("#/");

@@ -1,0 +1,8 @@
+dataset_version: "1.0"
+suite: data_discovery
+cases:
+  - {case_id: discovery-001, description: Provider specialty dataset, question: "Which dataset contains provider specialty?", expected_datasets: [providers], tags: [provider]}
+  - {case_id: discovery-002, description: Claim payment dataset, question: "Which dataset contains payer type?", expected_datasets: [claims], tags: [claims]}
+  - {case_id: discovery-003, description: Appointment status dataset, question: "Where can I find appointment status?", expected_datasets: [appointments], tags: [appointments]}
+  - {case_id: discovery-004, description: Encounter type dataset, question: "Which table contains encounter type?", expected_datasets: [encounters], tags: [encounters]}
+  - {case_id: discovery-005, description: Facility type dataset, question: "Locate the dataset containing facility type.", expected_datasets: [facilities], tags: [facility]}

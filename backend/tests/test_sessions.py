@@ -104,8 +104,16 @@ def test_mode_selection_and_reset_are_isolated_by_tab(
 
     browser_session_id = session_api.client.cookies.get(session_api.settings.session_cookie_name)
     assert browser_session_id is not None
-    tab_a = SessionIdentity(browser_session_id=browser_session_id, tab_id="tab-a")
-    tab_b = SessionIdentity(browser_session_id=browser_session_id, tab_id="tab-b")
+    tab_a = SessionIdentity(
+        browser_session_id=browser_session_id,
+        tab_id="tab-a",
+        owner_subject="dev-user",
+    )
+    tab_b = SessionIdentity(
+        browser_session_id=browser_session_id,
+        tab_id="tab-b",
+        owner_subject="dev-user",
+    )
     state_a = session_api.store.load(tab_a)
     state_b = session_api.store.load(tab_b)
     assert state_a is not None
@@ -155,7 +163,11 @@ def test_absent_tab_header_uses_default_tab(session_api: SessionAPIContext) -> N
     browser_session_id = session_api.client.cookies.get(session_api.settings.session_cookie_name)
     assert browser_session_id is not None
     state = session_api.store.load(
-        SessionIdentity(browser_session_id=browser_session_id, tab_id="default")
+        SessionIdentity(
+            browser_session_id=browser_session_id,
+            tab_id="default",
+            owner_subject="dev-user",
+        )
     )
     assert state is not None
     assert state.selected_mode is ChatModeKey.AUTO

@@ -1,0 +1,18 @@
+dataset_version: "1.0"
+suite: routing
+cases:
+  - {case_id: route-001, description: Historical claim count, question: "How many claims were recorded last year?", expected_route: sql, tags: [historical, claims]}
+  - {case_id: route-002, description: Paid amount projection, question: "Forecast aggregate paid claim amounts for the next quarter.", expected_route: forecasting, tags: [future, claims]}
+  - {case_id: route-003, description: Provider field discovery, question: "Which dataset contains provider specialty?", expected_route: data_discovery, tags: [dataset, provider]}
+  - {case_id: route-004, description: Broad lineage question, question: "Explain the governed lineage for claim payments.", expected_route: knowledge_catalog, tags: [lineage]}
+  - {case_id: route-005, description: Claims quality rules, question: "What data quality rules apply to claims?", expected_route: data_quality, tags: [quality]}
+  - {case_id: route-006, description: Explicit graph specialist, question: "Use Semantica to connect claims and encounters.", expected_route: semantica, tags: [graph]}
+  - {case_id: route-007, description: Access request, question: "I need access to the governed analytics group.", expected_route: group_access, tags: [access]}
+  - {case_id: route-008, description: Greeting, question: "Hello!", expected_route: chat, tags: [conversation]}
+  - {case_id: route-009, description: Capability help, question: "What can you do?", expected_route: help, tags: [help]}
+  - {case_id: route-010, description: Historical appointment status, question: "Summarize completed and cancelled appointments by month.", expected_route: sql, tags: [historical, appointments]}
+  - {case_id: route-011, description: Future utilization, question: "Predict encounter volume next month.", expected_route: forecasting, tags: [future, encounters]}
+  - {case_id: route-012, description: Facility schema lookup, question: "Where can I find the facility type table?", expected_route: data_discovery, tags: [dataset, facility]}
+  - {case_id: route-013, description: Retention policy, question: "What policy governs retention of the synthetic catalog?", expected_route: knowledge_catalog, tags: [policy]}
+  - {case_id: route-014, description: Missing provider fields, question: "Are there missing values in provider records?", expected_route: data_quality, tags: [completeness]}
+  - {case_id: route-015, description: Aggregate allowed amount, question: "Show average allowed amount by payer type.", expected_route: sql, tags: [historical, claims]}

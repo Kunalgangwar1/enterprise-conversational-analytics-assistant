@@ -1,0 +1,6 @@
+dataset_version: "1.0"
+suite: orchestration
+cases:
+  - {case_id: orchestration-001, description: Explicit SQL mode contract, question: "Count claims", selected_mode: sql, expected_route: sql, expected_response_type: sql, tags: [mode]}
+  - {case_id: orchestration-002, description: Auto discovery response, question: "Which dataset contains facility type?", selected_mode: auto, expected_route: data_discovery, expected_response_type: data_discovery, tags: [auto]}
+  - {case_id: orchestration-003, description: Auto forecast response, question: "Forecast appointment volume next month.", selected_mode: auto, expected_route: forecasting, expected_response_type: forecast, tags: [auto, forecast]}

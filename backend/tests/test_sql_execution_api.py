@@ -85,6 +85,7 @@ def _seed_session(
         SessionState(
             browser_session_id=browser_id,
             tab_id=tab_id,
+            owner_subject="dev-user",
             last_generated_sql=sql,
             last_token_mapping=mapping,
         )

@@ -14,7 +14,8 @@ Amazon Bedrock is a future optional adapter, not a Phase 15 implementation.
 Later AWS phases may introduce ECR, ECS/Fargate, RDS PostgreSQL, ElastiCache Redis, S3, Secrets
 Manager, CloudWatch with OpenTelemetry, and an Application Load Balancer. None is provisioned in
 this phase. Hosting the application on AWS does not require hosting its AI model on AWS: an
-AWS-hosted service can call Gemini externally. Identity and RBAC remain a later decision.
+AWS-hosted service can call Gemini externally. Phase 21 defines provider-neutral identity and RBAC;
+actual Cognito resources and hosted login remain future deployment work.
 
 ## Currently implemented
 
@@ -46,7 +47,39 @@ AWS-hosted service can call Gemini externally. Identity and RBAC remain a later 
 - Internal aggregate forecasting with deterministic backtesting, selection, and intervals
 - Thin application-level chat orchestration over the existing specialists
 - React/TypeScript/webpack One UI with typed specialist result rendering
+- Separate deterministic AI Dashboard with aggregate-only PostgreSQL analytics
+- Development and OIDC/JWT authentication normalized into `AuthPrincipal`
+- Explicit viewer/analyst/admin permission composition and server-side RBAC
+- Authenticated-subject session ownership and deterministic Group Access self-introspection
 - Automated backend test foundation
+
+## Phase 21 authentication and authorization
+
+```text
+Identity Provider (development now / standards-compatible OIDC)
+                    |
+                    v
+        AuthenticationBackend -> AuthPrincipal
+                    |
+                    v
+          AuthorizationService
+          /         |          \
+       Chat      Dashboard   Specialists
+         |
+     Supervisor -> required route permission -> specialist
+
+AuthPrincipal -> permission-filtered AdvancedToolRegistry
+              -> planner -> second tool permission check -> execution
+
+Session key = subject + browser session ID + tab ID
+```
+
+Authentication normalizes provider claims once. Application code does not consume raw JWT claims,
+and authorization is deterministic code rather than an LLM decision. Feature flags decide rollout,
+the agent registry decides implementation eligibility, and permissions decide user access. These
+three controls are intentionally separate. `GET /api/health` remains public; application and data
+routes are protected. See [`authentication-authorization.md`](authentication-authorization.md) and
+[`ADR-021`](decisions/ADR-021-authentication-authorization-rbac.md).
 
 ## Feature flags
 
@@ -174,21 +207,50 @@ analytics logic. Advanced results expose only their synthesized output, and the 
 receives resolved sensitive SQL or privacy mappings. See
 [`ADR-018`](decisions/ADR-018-one-ui-chat-orchestration.md).
 
+## Phase 19 AI Dashboard
+
+```text
+                    React Application
+                          |
+              +-----------+-----------+
+              |                       |
+          #/ Chat                #/dashboard
+              |                       |
+              v                       v
+          POST /chat           /api/dashboards/*
+              |                       |
+      ChatOrchestrator         DashboardService
+              |                       |
+       AI Specialists         Aggregate Queries
+                                      |
+                                      v
+                              Read-only PostgreSQL
+```
+
+Dashboard does not pass through `SupervisorMultiAgent`, intent routing, advanced reasoning,
+multi-hop NLP-to-SQL, or forecasting. Its fixed SQL uses bound date parameters and the same
+read-only, timed, validated, bounded `QueryExecutor` as analytical chat execution. Responses are
+aggregate-only and dashboard requests do not read or alter chat session state. Default dates come
+from available claims, encounter, and appointment dates—not server wall-clock time. See
+[`ai-dashboard.md`](ai-dashboard.md) and [`ADR-019`](decisions/ADR-019-ai-dashboard.md).
+
 ## Session state
 
-Phase 7 identifies a logical conversation with an opaque browser-session cookie plus a validated
-`X-Tab-Id` header. The composite identity is converted to a deterministic SHA-256 storage key, and
+Phase 7 identified a logical conversation with an opaque browser-session cookie plus a validated
+`X-Tab-Id` header. Phase 21 adds the authenticated subject. The three-part identity is converted to
+a deterministic SHA-256 storage key, and
 typed state is persisted through this boundary:
 
 ```text
 HTTP request
-  -> browser cookie + X-Tab-Id
+  -> authenticated subject + browser cookie + X-Tab-Id
   -> SessionService
   -> SessionStore
   -> atomic local JSON artifact
 ```
 
-Tabs sharing a browser cookie remain isolated. Reset clears only the current tab's conversational
+Users sharing a browser cookie and tabs sharing a user/browser remain isolated. Reset clears only
+the current subject/browser/tab's conversational
 fields and preserves its selected mode. Privacy mappings are request-scoped and
 `token_mapping_history` is not part of `SessionState`; `custom_context` will be sent fresh with
 future chat turns. Neither appears in persisted session JSON. `last_token_mapping` remains the
@@ -369,9 +431,37 @@ validation boundary before Phase 13 can execute anything.
 
 The following capabilities are architectural direction, not current implementation:
 
-- Phase 19 AI Dashboard
-- Authentication, production infrastructure, deployment, and observability
+- Authentication, production infrastructure, deployment, and observability remain future phases.
 
 Components will be introduced incrementally. Each phase should preserve clear boundaries between
 HTTP transport, application logic, integrations, and data access without creating unused
 abstractions in advance.
+
+## Phase 20 evaluation sidecar
+
+```text
+                  Application
+                      |
+     +----------------+----------------+
+     |                |                |
+ Chat runtime      Dashboard       Specialists
+     +----------------+----------------+
+                      ^
+                      |
+              Evaluation Harness
+              /        |        \
+         Offline   Integration   Live
+          fakes     local DB     LLM API
+              \        |        /
+               JSON + Markdown reports
+                         |
+               explicit regression baseline
+```
+
+The evaluator imports existing application boundaries but is never imported by the FastAPI runtime.
+Its versioned synthetic cases cover routing, semantic NLP-to-SQL correctness, SQL safety, discovery,
+catalog/DQ/Semantica retrieval, advanced and multi-hop bounds, forecasting, orchestration, and
+privacy. Offline runs make no provider calls. Integration executes candidate and trusted reference
+SQL through the same read-only PostgreSQL executor. Live runs use provider-neutral clients and are
+optional. See [`evaluation.md`](evaluation.md) and
+[`ADR-020`](decisions/ADR-020-evaluation-regression-framework.md).

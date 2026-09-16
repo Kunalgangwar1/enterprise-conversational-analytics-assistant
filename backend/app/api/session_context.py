@@ -3,20 +3,29 @@
 from fastapi import Request, Response
 
 from app.api.errors import APIError
+from app.auth.models import AuthPrincipal
 from app.core.config import Settings
-from app.sessions.exceptions import InvalidTabIdError
+from app.sessions.exceptions import (
+    InvalidTabIdError,
+    SessionConflictError,
+    SessionStoreError,
+    SessionStoreUnavailableError,
+)
 from app.sessions.identity import ResolvedSessionIdentity, resolve_session_identity
 from app.sessions.service import SessionService
 
 
-def resolve_request_identity(request: Request) -> tuple[Settings, ResolvedSessionIdentity]:
+def resolve_request_identity(
+    request: Request,
+    principal: AuthPrincipal,
+) -> tuple[Settings, ResolvedSessionIdentity]:
     """Resolve the configured cookie and tab header into one validated identity."""
 
     settings: Settings = request.app.state.settings
     browser_cookie = request.cookies.get(settings.session_cookie_name)
     tab_header = request.headers.get(settings.tab_id_header)
     try:
-        resolved = resolve_session_identity(browser_cookie, tab_header)
+        resolved = resolve_session_identity(browser_cookie, tab_header, principal.subject)
     except InvalidTabIdError as exc:
         raise APIError(
             status_code=400,
@@ -52,8 +61,21 @@ def set_browser_cookie(
     )
 
 
-def session_storage_api_error() -> APIError:
-    """Return the shared sanitized persistence error."""
+def session_storage_api_error(error: SessionStoreError) -> APIError:
+    """Map storage failures to stable, sanitized HTTP contracts."""
+
+    if isinstance(error, SessionConflictError):
+        return APIError(
+            status_code=409,
+            code="session_conflict",
+            message="Session state changed concurrently; retry the request.",
+        )
+    if isinstance(error, SessionStoreUnavailableError):
+        return APIError(
+            status_code=503,
+            code="session_store_unavailable",
+            message="Session state is temporarily unavailable.",
+        )
 
     return APIError(
         status_code=500,

@@ -1,0 +1,22 @@
+policies:
+  - metric: routing.routing_accuracy
+    direction: higher_is_better
+    allowed_degradation: 0.0
+  - metric: nlp2sql.result_equivalence_accuracy
+    direction: higher_is_better
+    allowed_degradation: 0.0
+  - metric: data_discovery.recall_at_k
+    direction: higher_is_better
+    allowed_degradation: 0.05
+  - metric: sql_safety.unsafe_execution_count
+    direction: lower_is_better
+    allowed_degradation: 0.0
+    hard_gate: true
+  - metric: privacy.privacy_leak_count
+    direction: lower_is_better
+    allowed_degradation: 0.0
+    hard_gate: true
+  - metric: knowledge_catalog.invalid_citation_count
+    direction: lower_is_better
+    allowed_degradation: 0.0
+    hard_gate: true

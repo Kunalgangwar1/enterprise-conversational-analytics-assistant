@@ -1,8 +1,9 @@
 """PostgreSQL implementation of the safe query executor contract."""
 
+from collections.abc import Mapping
 from time import perf_counter
 
-from sqlalchemy import Engine
+from sqlalchemy import Engine, text
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 
 from app.db.query.exceptions import (
@@ -37,6 +38,7 @@ class PostgresQueryExecutor:
         self,
         sql: str,
         *,
+        parameters: Mapping[str, object] | None = None,
         max_rows: int | None = None,
         timeout_ms: int | None = None,
     ) -> QueryExecutionResult:
@@ -51,7 +53,11 @@ class PostgresQueryExecutor:
                 connection.exec_driver_sql("SET TRANSACTION READ ONLY")
                 # The interpolated value is a constructor-validated integer, never SQL input.
                 connection.exec_driver_sql(f"SET LOCAL statement_timeout = {effective_timeout_ms}")
-                result = connection.exec_driver_sql(sql)
+                result = (
+                    connection.execute(text(sql), dict(parameters))
+                    if parameters is not None
+                    else connection.exec_driver_sql(sql)
+                )
                 columns = list(result.keys())
                 fetched_rows = result.mappings().fetchmany(effective_max_rows + 1)
         except DBAPIError as exc:

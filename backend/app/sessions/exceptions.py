@@ -11,3 +11,15 @@ class InvalidTabIdError(SessionError, ValueError):
 
 class SessionStoreError(SessionError):
     """Raised when durable session state cannot be read or written safely."""
+
+
+class SessionCorruptError(SessionStoreError):
+    """Raised when persisted state is malformed or uses an unsupported schema."""
+
+
+class SessionStoreUnavailableError(SessionStoreError):
+    """Raised when the configured shared session backend cannot be reached."""
+
+
+class SessionConflictError(SessionStoreError):
+    """Raised when an atomic session update repeatedly loses an optimistic lock."""

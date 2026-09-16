@@ -1,8 +1,8 @@
 """Stateful API contracts for per-tab mode selection and reset."""
 
-from typing import Literal
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, ConfigDict
 
 from app.api.errors import APIError, APIErrorResponse
@@ -12,10 +12,17 @@ from app.api.session_context import (
     session_storage_api_error,
     set_browser_cookie,
 )
+from app.auth.dependencies import require_permission
+from app.auth.models import AuthPrincipal
+from app.auth.permissions import Permission
 from app.core.chat_modes import ChatModeKey, UnsupportedChatModeError
 from app.sessions.exceptions import SessionStoreError
 
 router = APIRouter(prefix="/chat", tags=["sessions"])
+ChatPrincipal = Annotated[
+    AuthPrincipal,
+    Depends(require_permission(Permission.CHAT_USE)),
+]
 
 
 class SelectModeRequest(BaseModel):
@@ -49,17 +56,20 @@ class ResetSessionResponse(BaseModel):
     response_model=SelectModeResponse,
     responses={
         400: {"model": APIErrorResponse},
+        409: {"model": APIErrorResponse},
         500: {"model": APIErrorResponse},
+        503: {"model": APIErrorResponse},
     },
 )
 def select_mode(
     payload: SelectModeRequest,
     request: Request,
     response: Response,
+    principal: ChatPrincipal,
 ) -> SelectModeResponse:
     """Persist a canonical mode for the current browser-tab session."""
 
-    settings, resolved = resolve_request_identity(request)
+    settings, resolved = resolve_request_identity(request, principal)
     service = get_session_service(request)
     try:
         selection = service.select_mode(resolved.identity, payload.mode)
@@ -70,7 +80,7 @@ def select_mode(
             message=str(exc),
         ) from exc
     except SessionStoreError as exc:
-        raise session_storage_api_error() from exc
+        raise session_storage_api_error(exc) from exc
 
     set_browser_cookie(response, settings, resolved)
     return SelectModeResponse(
@@ -84,17 +94,23 @@ def select_mode(
     response_model=ResetSessionResponse,
     responses={
         400: {"model": APIErrorResponse},
+        409: {"model": APIErrorResponse},
         500: {"model": APIErrorResponse},
+        503: {"model": APIErrorResponse},
     },
 )
-def reset_session(request: Request, response: Response) -> ResetSessionResponse:
+def reset_session(
+    request: Request,
+    response: Response,
+    principal: ChatPrincipal,
+) -> ResetSessionResponse:
     """Clear conversational fields for only the current browser tab."""
 
-    settings, resolved = resolve_request_identity(request)
+    settings, resolved = resolve_request_identity(request, principal)
     try:
         state = get_session_service(request).reset(resolved.identity)
     except SessionStoreError as exc:
-        raise session_storage_api_error() from exc
+        raise session_storage_api_error(exc) from exc
 
     set_browser_cookie(response, settings, resolved)
     return ResetSessionResponse(mode=state.selected_mode)

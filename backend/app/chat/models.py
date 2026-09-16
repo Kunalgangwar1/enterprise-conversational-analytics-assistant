@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
+from app.auth.group_access import GroupAccessResult
 from app.core.chat_modes import ChatModeKey
 from app.data_discovery.models import DataDiscoveryResult
 from app.forecasting.models import ForecastResult
@@ -106,13 +107,19 @@ class ForecastChatResponse(ChatResponseBase):
     payload: ForecastResult
 
 
+class GroupAccessChatResponse(ChatResponseBase):
+    response_type: Literal["group_access"] = "group_access"
+    payload: GroupAccessResult
+
+
 ChatResponse: TypeAlias = Annotated[
     MessageChatResponse
     | SQLChatResponse
     | DiscoveryChatResponse
     | RAGChatResponse
     | AdvancedChatResponse
-    | ForecastChatResponse,
+    | ForecastChatResponse
+    | GroupAccessChatResponse,
     Field(discriminator="response_type"),
 ]
 

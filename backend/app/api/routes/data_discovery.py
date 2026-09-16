@@ -2,17 +2,23 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from app.api.errors import APIError, APIErrorResponse
+from app.auth.dependencies import require_permission
+from app.auth.permissions import Permission
 from app.data_discovery.exceptions import DataDiscoveryError
 from app.data_discovery.factory import build_data_discovery_service
 from app.data_discovery.models import DataDiscoveryResult
 from app.data_discovery.search import DataDiscoveryService
 from app.privacy import PrivacyProcessor
 
-router = APIRouter(prefix="/data-discovery", tags=["data-discovery"])
+router = APIRouter(
+    prefix="/data-discovery",
+    tags=["data-discovery"],
+    dependencies=[Depends(require_permission(Permission.DATA_DISCOVERY_READ))],
+)
 
 
 class DataDiscoveryQuery(BaseModel):

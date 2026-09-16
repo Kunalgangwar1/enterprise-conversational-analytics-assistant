@@ -1,0 +1,70 @@
+dataset_version: "1.0"
+suite: multihop
+cases:
+  - case_id: multihop-001
+    description: Facility type comparison
+    question: Find the facility type with highest claim volume then compare its average paid amount.
+    hops:
+      - {hop_id: hop-1, sub_question: "Find claim volume by facility type", purpose: "Select leading type", depends_on: []}
+      - {hop_id: hop-2, sub_question: "Compare average paid amount for the selected type with all others", purpose: "Calculate comparison", depends_on: [hop-1]}
+    min_hops: 2
+    max_hops: 3
+    expected_final: 12.5
+    actual_final: 12.5
+    candidate_sql: >-
+      WITH facility_volume AS (
+        SELECT f.facility_type, COUNT(*) AS claim_count
+        FROM claims c JOIN encounters e ON e.id = c.encounter_id
+        JOIN facilities f ON f.id = e.facility_id
+        GROUP BY f.facility_type
+      ), selected AS (
+        SELECT facility_type FROM facility_volume ORDER BY claim_count DESC, facility_type LIMIT 1
+      ), comparison AS (
+        SELECT AVG(c.paid_amount) FILTER (WHERE f.facility_type = s.facility_type) AS selected_avg,
+               AVG(c.paid_amount) FILTER (WHERE f.facility_type <> s.facility_type) AS other_avg
+        FROM claims c JOIN encounters e ON e.id = c.encounter_id
+        JOIN facilities f ON f.id = e.facility_id CROSS JOIN selected s
+      ) SELECT (selected_avg - other_avg)::float AS value FROM comparison
+    reference_sql: >-
+      SELECT (
+        AVG(c.paid_amount) FILTER (WHERE f.facility_type = top_type.facility_type) -
+        AVG(c.paid_amount) FILTER (WHERE f.facility_type <> top_type.facility_type)
+      )::float AS value
+      FROM claims c JOIN encounters e ON e.id = c.encounter_id
+      JOIN facilities f ON f.id = e.facility_id
+      CROSS JOIN (
+        SELECT f2.facility_type FROM claims c2
+        JOIN encounters e2 ON e2.id = c2.encounter_id
+        JOIN facilities f2 ON f2.id = e2.facility_id
+        GROUP BY f2.facility_type ORDER BY COUNT(*) DESC, f2.facility_type LIMIT 1
+      ) top_type
+    tags: [dependent, facility]
+  - case_id: multihop-002
+    description: Specialty allowed amount comparison
+    question: Find the specialty with highest average allowed amount then compare with the overall average.
+    hops:
+      - {hop_id: hop-1, sub_question: "Find average allowed amount by provider specialty", purpose: "Select specialty", depends_on: []}
+      - {hop_id: hop-2, sub_question: "Compare the selected specialty with the overall average", purpose: "Calculate delta", depends_on: [hop-1]}
+    min_hops: 2
+    max_hops: 3
+    expected_final: 8.75
+    actual_final: 8.75
+    numeric_tolerance: 0.001
+    candidate_sql: >-
+      WITH specialty_average AS (
+        SELECT p.specialty, AVG(c.allowed_amount) AS average_allowed
+        FROM claims c JOIN providers p ON p.id = c.provider_id GROUP BY p.specialty
+      ), selected AS (
+        SELECT average_allowed FROM specialty_average
+        ORDER BY average_allowed DESC, specialty LIMIT 1
+      ) SELECT (selected.average_allowed - AVG(c.allowed_amount))::float AS value
+      FROM claims c CROSS JOIN selected GROUP BY selected.average_allowed
+    reference_sql: >-
+      SELECT (MAX(grouped.average_allowed) - overall.average_allowed)::float AS value
+      FROM (
+        SELECT p.specialty, AVG(c.allowed_amount) AS average_allowed
+        FROM claims c JOIN providers p ON p.id = c.provider_id GROUP BY p.specialty
+      ) grouped CROSS JOIN (
+        SELECT AVG(allowed_amount) AS average_allowed FROM claims
+      ) overall GROUP BY overall.average_allowed
+    tags: [dependent, provider]

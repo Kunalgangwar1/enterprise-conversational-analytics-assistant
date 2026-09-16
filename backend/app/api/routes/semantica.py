@@ -2,10 +2,12 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from app.api.errors import APIError, APIErrorResponse
+from app.auth.dependencies import require_permission
+from app.auth.permissions import Permission
 from app.knowledge_catalog.exceptions import EmbeddingError, KnowledgeIndexError
 from app.knowledge_catalog.models import KnowledgeCatalogResult
 from app.llm.exceptions import LLMError
@@ -14,7 +16,11 @@ from app.semantica.agent import SemanticaAgent
 from app.semantica.exceptions import SemanticaError
 from app.semantica.factory import build_semantica_agent
 
-router = APIRouter(prefix="/semantica", tags=["semantica"])
+router = APIRouter(
+    prefix="/semantica",
+    tags=["semantica"],
+    dependencies=[Depends(require_permission(Permission.SEMANTICA_READ))],
+)
 
 
 class SemanticaQuery(BaseModel):

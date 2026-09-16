@@ -6,10 +6,12 @@ from uuid import uuid4
 
 import pytest
 
+from app.auth.authorization import AuthorizationService
+from app.auth.models import AuthMethod, AuthPrincipal
+from app.auth.roles import AppRole
 from app.chat.exceptions import (
     ChatSQLGenerationError,
     InvalidChatStrategyError,
-    SpecialistUnavailableError,
 )
 from app.chat.models import ChatRequest, SQLStrategy
 from app.chat.orchestrator import ChatOrchestrator
@@ -49,6 +51,16 @@ def _state(mode: ChatModeKey) -> SessionState:
         browser_session_id=str(uuid4()),
         tab_id="tab-test",
         selected_mode=mode,
+    )
+
+
+def _principal(role: AppRole = AppRole.ANALYST) -> AuthPrincipal:
+    return AuthorizationService().enrich(
+        AuthPrincipal(
+            subject="test-user",
+            roles=(role,),
+            authentication_method=AuthMethod.DEVELOPMENT,
+        )
     )
 
 
@@ -100,6 +112,7 @@ def test_standard_sql_is_validated_but_not_executed_and_keeps_safe_tokens() -> N
     turn = orchestrator.run(
         ChatRequest(message="Count claim C0000001", sql_strategy=SQLStrategy.STANDARD),
         _state(ChatModeKey.SQL),
+        _principal(),
     )
 
     assert turn.response.response_type == "sql"
@@ -118,6 +131,7 @@ def test_rejected_standard_sql_is_not_returned_for_execution() -> None:
         orchestrator.run(
             ChatRequest(message="Count claims", sql_strategy=SQLStrategy.STANDARD),
             _state(ChatModeKey.SQL),
+            _principal(),
         )
 
 
@@ -132,6 +146,7 @@ def test_custom_context_is_privacy_processed_as_current_turn_data() -> None:
             custom_context="Only claim C0000001 for analyst@example.test",
         ),
         _state(ChatModeKey.SQL),
+        _principal(),
     )
     safe_question = nlp2sql.generate_sql.call_args.args[0]
     assert "C0000001" not in safe_question
@@ -145,7 +160,11 @@ def test_raw_input_is_privacy_processed_before_supervisor_routing() -> None:
     nlp2sql.generate_sql.return_value = _accepted_sql()
     orchestrator, supervisor = _orchestrator(InternalRoute.SQL, nlp2sql=nlp2sql)
 
-    orchestrator.run(ChatRequest(message="Count claim C0000001"), _state(ChatModeKey.AUTO))
+    orchestrator.run(
+        ChatRequest(message="Count claim C0000001"),
+        _state(ChatModeKey.AUTO),
+        _principal(),
+    )
 
     supervisor.route.assert_called_once_with("Count claim T001", ChatModeKey.AUTO)
 
@@ -168,6 +187,7 @@ def test_advanced_strategy_reuses_multihop_agent() -> None:
     turn = orchestrator.run(
         ChatRequest(message="Compare claim groups", sql_strategy=SQLStrategy.ADVANCED),
         _state(ChatModeKey.SQL),
+        _principal(),
     )
     assert turn.response.response_type == "advanced"
     agent.run.assert_called_once()
@@ -194,6 +214,7 @@ def test_forecasting_strategy_reuses_forecasting_agent() -> None:
     turn = orchestrator.run(
         ChatRequest(message="Forecast monthly claims", sql_strategy=SQLStrategy.FORECASTING),
         _state(ChatModeKey.SQL),
+        _principal(),
     )
     assert turn.response.response_type == "forecast"
     assert turn.response.payload.selected_model == "naive"
@@ -277,7 +298,7 @@ def test_explicit_specialist_modes_reuse_existing_agents(
     else:
         specialist.answer.return_value = result
     orchestrator, supervisor = _orchestrator(route, **{provider_name: specialist})
-    turn = orchestrator.run(ChatRequest(message="Safe question"), _state(mode))
+    turn = orchestrator.run(ChatRequest(message="Safe question"), _state(mode), _principal())
     assert turn.response.response_type == response_type
     supervisor.route.assert_called_once_with("Safe question", mode)
 
@@ -285,15 +306,24 @@ def test_explicit_specialist_modes_reuse_existing_agents(
 @pytest.mark.parametrize("route", [InternalRoute.CHAT, InternalRoute.HELP])
 def test_chat_and_help_routes_are_deterministic(route: InternalRoute) -> None:
     orchestrator, _ = _orchestrator(route)
-    turn = orchestrator.run(ChatRequest(message="hello"), _state(ChatModeKey.AUTO))
+    turn = orchestrator.run(
+        ChatRequest(message="hello"),
+        _state(ChatModeKey.AUTO),
+        _principal(),
+    )
     assert turn.response.response_type == "message"
     assert turn.response.content
 
 
-def test_group_access_is_controlled_unavailable() -> None:
+def test_group_access_returns_only_current_principal_access() -> None:
     orchestrator, _ = _orchestrator(InternalRoute.GROUP_ACCESS)
-    with pytest.raises(SpecialistUnavailableError):
-        orchestrator.run(ChatRequest(message="Request access"), _state(ChatModeKey.GROUP_ACCESS))
+    turn = orchestrator.run(
+        ChatRequest(message="What can I access?"),
+        _state(ChatModeKey.GROUP_ACCESS),
+        _principal(AppRole.VIEWER),
+    )
+    assert turn.response.response_type == "group_access"
+    assert "sql.generate" not in turn.response.content
 
 
 def test_sql_strategy_is_rejected_outside_data_intelligence() -> None:
@@ -302,4 +332,5 @@ def test_sql_strategy_is_rejected_outside_data_intelligence() -> None:
         orchestrator.run(
             ChatRequest(message="Find claims", sql_strategy=SQLStrategy.STANDARD),
             _state(ChatModeKey.DATA_DISCOVERY),
+            _principal(),
         )

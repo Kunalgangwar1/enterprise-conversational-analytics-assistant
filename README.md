@@ -5,9 +5,10 @@ analytics system. It uses synthetic healthcare examples only. Proprietary code, 
 patient/member data, and credentials must never be committed.
 
 `ARCHITECTURE_REPO_RUNBOOK.md` is the primary reference for the intended system. The implementation
-is complete through Phase 18: the FastAPI backend connects the existing specialist workflows through
-a thin chat orchestrator, and the React/TypeScript/webpack One UI provides the conversational surface.
-Phase 19 AI Dashboard functionality is not implemented.
+is complete through Phase 21. Phase 18 connects specialist workflows through a thin chat
+orchestrator and React One UI, Phase 19 adds the deterministic AI Dashboard, and Phase 20 adds a
+sidecar evaluation/regression harness. Phase 21 adds provider-neutral authentication, explicit
+RBAC, subject-owned sessions, and deterministic self-access inspection.
 
 ## Repository layout
 
@@ -22,6 +23,20 @@ scripts/    Task-specific utilities
 
 Python 3.11+, Node.js 18+, npm, and a local PostgreSQL instance are expected. Configure local
 backend values from `.env.example`; never place secrets in source control.
+
+Local development uses a configured server-side identity and requires no browser token:
+
+```dotenv
+APP_ENV=development
+AUTH_MODE=development
+AUTH_DEV_SUBJECT=dev-user
+AUTH_DEV_ROLES=analyst
+```
+
+Development authentication is rejected outside local/development/test environments.
+Production-style `AUTH_MODE=oidc` verifies signed bearer JWTs using configured issuer JWKS and can
+later point at Cognito without changing authorization logic. Phase 21 stores no passwords and
+requires no AWS account.
 
 Terminal 1:
 
@@ -39,12 +54,35 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`. The webpack development server proxies `/api` and `/chat` to the
-backend on port 8000. The application uses `HashRouter`, so client routes appear after `#/`.
+The webpack development server proxies `/api` and `/chat` to the backend on port 8000. Open:
+
+- Chat: `http://localhost:5173/#/`
+- Dashboard: `http://localhost:5173/#/dashboard`
+
+Both surfaces run in the same React application and backend processes.
 
 The frontend needs no Gemini, Azure, AWS, or database credentials. LLM-backed backend workflows
 require their selected provider configuration, while deterministic modes such as Data Discovery
 remain usable without model credentials.
+The aggregate Dashboard also requires no model or AWS credentials.
+
+## Evaluation
+
+From `backend/`, run the deterministic network-free profile:
+
+```bash
+python -m app.evaluation.run --profile offline
+```
+
+Run against the local synthetic PostgreSQL database, or optionally the configured live provider:
+
+```bash
+python -m app.evaluation.run --profile integration
+python -m app.evaluation.run --profile live
+```
+
+Compare a reviewed baseline with `--compare-baseline evals/baselines/offline-v1.json`. Live runs are
+never started automatically and do not fall back to fakes. See [`docs/evaluation.md`](docs/evaluation.md).
 
 ## Database setup
 
@@ -82,5 +120,6 @@ npm run build
 ```
 
 The main APIs are documented in [`docs/api.md`](docs/api.md), the current architecture in
-[`docs/architecture.md`](docs/architecture.md), and the Phase 18 decision in
-[`ADR-018`](docs/decisions/ADR-018-one-ui-chat-orchestration.md).
+[`docs/architecture.md`](docs/architecture.md), authentication/RBAC in
+[`docs/authentication-authorization.md`](docs/authentication-authorization.md), and its decision in
+[`ADR-021`](docs/decisions/ADR-021-authentication-authorization-rbac.md).

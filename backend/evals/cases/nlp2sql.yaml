@@ -1,0 +1,104 @@
+dataset_version: "1.0"
+suite: nlp2sql
+cases:
+  - case_id: sql-claims-001
+    description: Claim count semantic equivalence
+    question: Count all synthetic claims.
+    selected_domains: [claims]
+    selected_tables: [claims]
+    candidate_sql: "SELECT COUNT(id) AS claim_count FROM claims"
+    reference_sql: "SELECT COUNT(*) AS claim_count FROM claims"
+    candidate_result: [{claim_count: 25}]
+    reference_result: [{claim_count: 25}]
+    tags: [count]
+  - case_id: sql-claims-002
+    description: Aggregate paid amount
+    question: What is the total paid amount across claims?
+    selected_domains: [claims]
+    selected_tables: [claims]
+    candidate_sql: "SELECT SUM(paid_amount) AS total_paid FROM claims"
+    reference_sql: "SELECT SUM(c.paid_amount) AS total_paid FROM claims AS c"
+    candidate_result: [{total_paid: 1000.25}]
+    reference_result: [{total_paid: 1000.25}]
+    tags: [sum]
+  - case_id: sql-claims-003
+    description: Average allowed by payer
+    question: Show average allowed amount by payer type.
+    selected_domains: [claims]
+    selected_tables: [claims]
+    candidate_sql: "SELECT payer_type, AVG(allowed_amount) AS average_allowed FROM claims GROUP BY payer_type"
+    reference_sql: "SELECT payer_type, SUM(allowed_amount) / COUNT(*) AS average_allowed FROM claims GROUP BY payer_type"
+    candidate_result: [{payer_type: commercial, average_allowed: 80.0}, {payer_type: medicare, average_allowed: 70.0}]
+    reference_result: [{payer_type: medicare, average_allowed: 70.0}, {payer_type: commercial, average_allowed: 80.0}]
+    tags: [average, group_by]
+  - case_id: sql-provider-001
+    description: Providers grouped by specialty
+    question: Count providers by specialty.
+    selected_domains: [provider_network]
+    selected_tables: [providers]
+    candidate_sql: "SELECT specialty, COUNT(id) AS provider_count FROM providers GROUP BY specialty"
+    reference_sql: "SELECT specialty, COUNT(*) AS provider_count FROM providers GROUP BY specialty"
+    candidate_result: [{specialty: Cardiology, provider_count: 4}, {specialty: Primary Care, provider_count: 7}]
+    reference_result: [{specialty: Primary Care, provider_count: 7}, {specialty: Cardiology, provider_count: 4}]
+    tags: [provider, group_by]
+  - case_id: sql-facility-001
+    description: Facilities grouped by type
+    question: How many facilities exist for each facility type?
+    selected_domains: [provider_network]
+    selected_tables: [facilities]
+    candidate_sql: "SELECT facility_type, COUNT(id) AS facility_count FROM facilities GROUP BY facility_type"
+    reference_sql: "SELECT facility_type, COUNT(*) AS facility_count FROM facilities GROUP BY facility_type"
+    candidate_result: [{facility_type: Clinic, facility_count: 3}]
+    reference_result: [{facility_type: Clinic, facility_count: 3}]
+    tags: [facility, group_by]
+  - case_id: sql-member-001
+    description: Aggregate members by state
+    question: Count represented members by state without returning identifiers.
+    selected_domains: [member]
+    selected_tables: [members]
+    candidate_sql: "SELECT state, COUNT(id) AS member_count FROM members GROUP BY state"
+    reference_sql: "SELECT state, COUNT(*) AS member_count FROM members GROUP BY state"
+    candidate_result: [{state: CA, member_count: 12}, {state: TX, member_count: 9}]
+    reference_result: [{state: TX, member_count: 9}, {state: CA, member_count: 12}]
+    tags: [aggregate, privacy]
+  - case_id: sql-encounter-001
+    description: Encounter type distribution
+    question: Count encounters by encounter type.
+    selected_domains: [clinical_encounters]
+    selected_tables: [encounters]
+    candidate_sql: "SELECT encounter_type, COUNT(id) AS encounter_count FROM encounters GROUP BY encounter_type"
+    reference_sql: "SELECT encounter_type, COUNT(*) AS encounter_count FROM encounters GROUP BY encounter_type"
+    candidate_result: [{encounter_type: outpatient, encounter_count: 10}]
+    reference_result: [{encounter_type: outpatient, encounter_count: 10}]
+    tags: [encounters]
+  - case_id: sql-appointment-001
+    description: Appointment status distribution
+    question: Count appointments by status.
+    selected_domains: [scheduling]
+    selected_tables: [appointments]
+    candidate_sql: "SELECT status, COUNT(id) AS appointment_count FROM appointments GROUP BY status"
+    reference_sql: "SELECT status, COUNT(*) AS appointment_count FROM appointments GROUP BY status"
+    candidate_result: [{status: completed, appointment_count: 8}]
+    reference_result: [{status: completed, appointment_count: 8}]
+    tags: [appointments]
+  - case_id: sql-join-001
+    description: Claims by provider specialty join
+    question: Count claims by provider specialty.
+    selected_domains: [claims, provider_network]
+    selected_tables: [claims, providers]
+    candidate_sql: "SELECT p.specialty, COUNT(c.id) AS claim_count FROM claims AS c JOIN providers AS p ON p.id = c.provider_id GROUP BY p.specialty"
+    reference_sql: "SELECT p.specialty, COUNT(*) AS claim_count FROM providers AS p INNER JOIN claims AS c ON c.provider_id = p.id GROUP BY p.specialty"
+    candidate_result: [{specialty: Cardiology, claim_count: 5}]
+    reference_result: [{specialty: Cardiology, claim_count: 5}]
+    tags: [join, provider]
+  - case_id: sql-topn-001
+    description: Top claim statuses
+    question: Return the three claim statuses with the highest volume.
+    selected_domains: [claims]
+    selected_tables: [claims]
+    candidate_sql: "SELECT claim_status, COUNT(*) AS claim_count FROM claims GROUP BY claim_status ORDER BY claim_count DESC, claim_status LIMIT 3"
+    reference_sql: "SELECT claim_status, COUNT(id) AS claim_count FROM claims GROUP BY claim_status ORDER BY claim_count DESC, claim_status LIMIT 3"
+    candidate_result: [{claim_status: paid, claim_count: 9}, {claim_status: pending, claim_count: 5}]
+    reference_result: [{claim_status: paid, claim_count: 9}, {claim_status: pending, claim_count: 5}]
+    order_sensitive: true
+    tags: [top_n, ordering]

@@ -1,6 +1,8 @@
-"""Unified conversational endpoint over the application chat orchestrator."""
+"""Unified authenticated conversational endpoint over the chat orchestrator."""
 
-from fastapi import APIRouter, Request, Response
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Request, Response
 
 from app.advanced_reasoning.exceptions import AdvancedReasoningError
 from app.api.errors import APIError, APIErrorResponse
@@ -10,6 +12,10 @@ from app.api.session_context import (
     session_storage_api_error,
     set_browser_cookie,
 )
+from app.auth.dependencies import require_permission
+from app.auth.exceptions import PermissionDeniedError
+from app.auth.models import AuthPrincipal
+from app.auth.permissions import Permission
 from app.chat.exceptions import (
     ChatSQLGenerationError,
     InvalidChatStrategyError,
@@ -30,6 +36,10 @@ from app.semantica.exceptions import SemanticaError
 from app.sessions.exceptions import SessionStoreError
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+ChatPrincipal = Annotated[
+    AuthPrincipal,
+    Depends(require_permission(Permission.CHAT_USE)),
+]
 
 
 @router.post(
@@ -42,14 +52,19 @@ router = APIRouter(prefix="/chat", tags=["chat"])
         503: {"model": APIErrorResponse},
     },
 )
-def chat(payload: ChatRequest, request: Request, response: Response) -> ChatResponse:
+def chat(
+    payload: ChatRequest,
+    request: Request,
+    response: Response,
+    principal: ChatPrincipal,
+) -> ChatResponse:
     """Execute one tab-isolated turn and persist only user-facing conversation state."""
 
-    settings, resolved = resolve_request_identity(request)
+    settings, resolved = resolve_request_identity(request, principal)
     service = get_session_service(request)
     try:
         state = service.get_or_create(resolved.identity)
-        turn = _get_orchestrator(request).run(payload, state)
+        turn = _get_orchestrator(request).run(payload, state, principal)
         service.complete_turn(
             resolved.identity,
             user_content=payload.message,
@@ -64,6 +79,12 @@ def chat(payload: ChatRequest, request: Request, response: Response) -> ChatResp
         )
     except InvalidChatStrategyError as exc:
         raise APIError(status_code=400, code="invalid_chat_strategy", message=str(exc)) from exc
+    except PermissionDeniedError as exc:
+        raise APIError(
+            status_code=403,
+            code="permission_denied",
+            message="You do not have permission to perform this action.",
+        ) from exc
     except ChatSQLGenerationError as exc:
         raise APIError(
             status_code=409,
@@ -77,7 +98,7 @@ def chat(payload: ChatRequest, request: Request, response: Response) -> ChatResp
             message=str(exc),
         ) from exc
     except SessionStoreError as exc:
-        raise session_storage_api_error() from exc
+        raise session_storage_api_error(exc) from exc
     except (LLMError, RoutingError) as exc:
         raise APIError(
             status_code=503,

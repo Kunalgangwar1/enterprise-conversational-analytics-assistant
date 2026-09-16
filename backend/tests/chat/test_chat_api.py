@@ -100,6 +100,7 @@ def _identity(client: TestClient, settings: Settings, tab_id: str) -> SessionIde
     return SessionIdentity(
         browser_session_id=client.cookies.get(settings.session_cookie_name),
         tab_id=tab_id,
+        owner_subject="dev-user",
     )
 
 
@@ -253,7 +254,7 @@ def test_tab_ids_keep_modes_and_history_isolated(tmp_path: Path) -> None:
     assert state_b.chat_history == []
 
 
-def test_group_access_and_provider_failures_use_safe_error_envelopes(tmp_path: Path) -> None:
+def test_group_access_and_provider_failures_use_safe_contracts(tmp_path: Path) -> None:
     group_client, _, _ = _app(tmp_path / "group", route=InternalRoute.GROUP_ACCESS, providers={})
     with group_client:
         group_client.post(
@@ -261,11 +262,13 @@ def test_group_access_and_provider_failures_use_safe_error_envelopes(tmp_path: P
             json={"mode": "group_access"},
             headers={"X-Tab-Id": "tab-a"},
         )
-        unavailable = group_client.post(
-            "/chat", json={"message": "Request access"}, headers={"X-Tab-Id": "tab-a"}
+        access = group_client.post(
+            "/chat", json={"message": "What can I access?"}, headers={"X-Tab-Id": "tab-a"}
         )
-    assert unavailable.status_code == 503
-    assert unavailable.json()["error"]["code"] == "specialist_unavailable"
+    assert access.status_code == 200
+    assert access.json()["response_type"] == "group_access"
+    assert "sql.generate" in access.json()["payload"]["effective_permissions"]
+    assert "token" not in access.text.lower()
 
     settings = Settings(_env_file=None, app_env="test", artifacts_output_dir=tmp_path / "provider")
     store = JsonFileSessionStore(tmp_path / "provider" / "sessions")

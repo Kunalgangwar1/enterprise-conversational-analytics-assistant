@@ -3,7 +3,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from threading import RLock
 
 from app.core.chat_modes import ChatModeConfig, ChatModeRegistry
 from app.sessions.identity import SessionIdentity
@@ -32,7 +31,6 @@ class SessionService:
         self._store = store
         self._mode_registry = mode_registry
         self._clock = clock
-        self._lock = RLock()
 
     def get_or_create(self, identity: SessionIdentity) -> SessionState:
         """Load current state or create an unpersisted default state."""
@@ -40,10 +38,14 @@ class SessionService:
         state = self._store.load(identity)
         if state is not None:
             return state
+        return self._new_state(identity)
+
+    def _new_state(self, identity: SessionIdentity) -> SessionState:
         now = self._clock()
         return SessionState(
             browser_session_id=identity.browser_session_id,
             tab_id=identity.tab_id,
+            owner_subject=identity.owner_subject,
             created_at=now,
             updated_at=now,
         )
@@ -52,23 +54,25 @@ class SessionService:
         """Validate and persist a canonical selected mode for one tab."""
 
         mode = self._mode_registry.get(requested_mode)
-        with self._lock:
-            current = self.get_or_create(identity)
-            updated = current.model_copy(
+
+        def mutate(current: SessionState | None) -> SessionState:
+            state = current or self._new_state(identity)
+            return state.model_copy(
                 update={
                     "selected_mode": mode.key,
                     "updated_at": self._clock(),
                 }
             )
-            self._store.save(updated)
+
+        updated = self._store.update(identity, mutate)
         return ModeSelection(state=updated, mode=mode)
 
     def reset(self, identity: SessionIdentity) -> SessionState:
         """Clear conversational fields while preserving identity, mode, and creation time."""
 
-        with self._lock:
-            current = self.get_or_create(identity)
-            reset_state = current.model_copy(
+        def mutate(current: SessionState | None) -> SessionState:
+            state = current or self._new_state(identity)
+            return state.model_copy(
                 update={
                     "chat_history": [],
                     "last_generated_sql": None,
@@ -77,8 +81,8 @@ class SessionService:
                     "updated_at": self._clock(),
                 }
             )
-            self._store.save(reset_state)
-        return reset_state
+
+        return self._store.update(identity, mutate)
 
     def complete_turn(
         self,
@@ -92,12 +96,12 @@ class SessionService:
     ) -> SessionState:
         """Atomically persist one user-facing turn and only its latest safe execution state."""
 
-        with self._lock:
-            current = self.get_or_create(identity)
-            updated = current.model_copy(
+        def mutate(current: SessionState | None) -> SessionState:
+            state = current or self._new_state(identity)
+            return state.model_copy(
                 update={
                     "chat_history": [
-                        *current.chat_history,
+                        *state.chat_history,
                         ChatMessage(role=ChatRole.USER, content=user_content),
                         ChatMessage(role=ChatRole.ASSISTANT, content=assistant_content),
                     ],
@@ -107,5 +111,5 @@ class SessionService:
                     "updated_at": self._clock(),
                 }
             )
-            self._store.save(updated)
-        return updated
+
+        return self._store.update(identity, mutate)

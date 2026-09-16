@@ -41,12 +41,13 @@ class ChatMessage(BaseModel):
 
 
 class SessionState(BaseModel):
-    """Durable state isolated by browser session and browser tab."""
+    """Durable state isolated by authenticated subject, browser, and tab."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     browser_session_id: str
     tab_id: str
+    owner_subject: str | None = None
     selected_mode: ChatModeKey = ChatModeKey.AUTO
     chat_history: list[ChatMessage] = Field(default_factory=list)
     last_generated_sql: str | None = None
@@ -67,6 +68,16 @@ class SessionState(BaseModel):
     @classmethod
     def require_valid_tab_id(cls, value: str) -> str:
         return validate_tab_id(value)
+
+    @field_validator("owner_subject")
+    @classmethod
+    def require_valid_owner_subject(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized or len(normalized) > 512:
+            raise ValueError("owner subject must contain 1-512 characters")
+        return normalized
 
     @field_validator("created_at", "updated_at")
     @classmethod

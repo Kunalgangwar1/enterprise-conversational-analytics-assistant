@@ -1,0 +1,32 @@
+dataset_version: "1.0"
+suite: forecasting
+cases:
+  - case_id: forecast-001
+    description: Flat monthly series
+    question: Forecast a flat aggregate monthly series.
+    frequency: month
+    history: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+    future: [10, 10, 10]
+    tags: [flat, monthly]
+  - case_id: forecast-002
+    description: Linear monthly trend
+    question: Forecast a linearly increasing monthly series.
+    frequency: month
+    history: [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]
+    future: [26, 28, 30]
+    tags: [trend, monthly]
+  - case_id: forecast-003
+    description: Linear weekly decline
+    question: Forecast a nonnegative weekly decreasing series.
+    frequency: week
+    history: [30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19]
+    future: [18, 17, 16]
+    tags: [trend, weekly]
+  - case_id: forecast-004
+    description: Seasonal monthly series
+    question: Forecast a repeating annual monthly pattern.
+    frequency: month
+    history: [10, 12, 14, 16, 18, 20, 22, 20, 18, 16, 14, 12, 10, 12, 14, 16, 18, 20, 22, 20, 18, 16, 14, 12]
+    future: [10, 12, 14]
+    integration_sql: "SELECT date_trunc('month', service_date)::date AS period, COUNT(*)::float AS value FROM claims GROUP BY 1 ORDER BY 1"
+    tags: [seasonal, monthly]

@@ -22,6 +22,24 @@ class Settings(BaseSettings):
 
     app_name: str = "Enterprise Conversational Analytics Assistant"
     app_env: str = "development"
+    auth_mode: Literal["development", "oidc"] = "development"
+    auth_dev_subject: str = "dev-user"
+    auth_dev_email: str | None = "developer@example.invalid"
+    auth_dev_display_name: str | None = "Local Developer"
+    auth_dev_roles: str = "analyst"
+    auth_oidc_issuer: str | None = None
+    auth_oidc_audience: str | None = None
+    auth_oidc_jwks_url: str | None = None
+    auth_oidc_algorithms: str = "RS256"
+    auth_oidc_roles_claim: str = "roles"
+    auth_oidc_groups_claim: str = "groups"
+    auth_oidc_scope_claim: str = "scope"
+    auth_oidc_email_claim: str = "email"
+    auth_oidc_display_name_claim: str = "name"
+    auth_oidc_token_use: str | None = None
+    auth_group_role_mapping: dict[str, Literal["viewer", "analyst", "admin"]] = Field(
+        default_factory=dict
+    )
     app_host: str = "127.0.0.1"
     app_port: int = Field(default=8000, ge=1, le=65_535)
     log_level: str = "INFO"
@@ -33,6 +51,8 @@ class Settings(BaseSettings):
     query_test_database_url: PostgresDsn | None = None
     query_max_rows: int = Field(default=500, ge=1)
     query_timeout_ms: int = Field(default=5_000, ge=1)
+    dashboard_top_n: int = Field(default=10, ge=1, le=50)
+    eval_random_seed: int = Field(default=42, ge=0)
     sql_result_summary_max_rows: int = Field(default=50, ge=1)
     sql_result_summary_max_chars: int = Field(default=12_000, ge=1)
     knowledge_catalog_dir: Path = _REPOSITORY_ROOT / "backend" / "data" / "knowledge_catalog"
@@ -87,6 +107,15 @@ class Settings(BaseSettings):
     )
     session_max_age_seconds: int = Field(default=86_400, ge=1)
     session_cookie_secure: bool = False
+    session_store_backend: Literal["json", "redis"] = "json"
+    session_redis_url: SecretStr | None = None
+    session_redis_key_prefix: str = Field(
+        default="eca:session",
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9:_-]+$",
+    )
+    session_redis_max_update_retries: int = Field(default=5, ge=1, le=50)
     tab_id_header: str = Field(
         default="X-Tab-Id",
         min_length=1,
@@ -140,6 +169,39 @@ class Settings(BaseSettings):
             raise ValueError(
                 "FORECAST_BACKTEST_POINTS must be lower than FORECAST_MIN_HISTORY_POINTS"
             )
+        return self
+
+    @model_validator(mode="after")
+    def validate_authentication_settings(self) -> Self:
+        """Reject unsafe development auth and incomplete OIDC configurations."""
+
+        environment = self.app_env.strip().lower()
+        if self.auth_mode == "development" and environment not in {
+            "local",
+            "development",
+            "dev",
+            "test",
+        }:
+            raise ValueError("AUTH_MODE=development is not allowed outside local/test environments")
+        if self.auth_mode == "oidc":
+            missing = [
+                name
+                for name, value in {
+                    "AUTH_OIDC_ISSUER": self.auth_oidc_issuer,
+                    "AUTH_OIDC_JWKS_URL": self.auth_oidc_jwks_url,
+                }.items()
+                if not value
+            ]
+            if missing:
+                raise ValueError(f"OIDC authentication requires: {', '.join(missing)}")
+        return self
+
+    @model_validator(mode="after")
+    def validate_session_store_settings(self) -> Self:
+        """Require Redis connection details only when the shared backend is selected."""
+
+        if self.session_store_backend == "redis" and self.session_redis_url is None:
+            raise ValueError("SESSION_REDIS_URL is required when SESSION_STORE_BACKEND=redis")
         return self
 
 

@@ -7,7 +7,7 @@ ui:
 tools:
   sql: true
   forecasting: false
-  group_access: false
+  group_access: true
   data_discovery: false
   knowledge_catalog: false
   semantica: false

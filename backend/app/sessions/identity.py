@@ -15,12 +15,13 @@ _TAB_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 
 
 class SessionIdentity(BaseModel):
-    """Validated composite identity for one browser tab's conversation."""
+    """Validated subject/browser/tab identity for one logical conversation."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     browser_session_id: str
     tab_id: str
+    owner_subject: str | None = None
 
     @field_validator("browser_session_id")
     @classmethod
@@ -36,6 +37,16 @@ class SessionIdentity(BaseModel):
 
         return validate_tab_id(value)
 
+    @field_validator("owner_subject")
+    @classmethod
+    def validate_owner_subject(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized or len(normalized) > 512:
+            raise ValueError("owner subject must contain 1-512 characters")
+        return normalized
+
 
 @dataclass(frozen=True)
 class ResolvedSessionIdentity:
@@ -48,6 +59,7 @@ class ResolvedSessionIdentity:
 def resolve_session_identity(
     browser_cookie: str | None,
     tab_header: str | None,
+    owner_subject: str | None = None,
 ) -> ResolvedSessionIdentity:
     """Resolve or safely replace the browser ID and validate the tab ID."""
 
@@ -63,6 +75,7 @@ def resolve_session_identity(
         identity=SessionIdentity(
             browser_session_id=browser_session_id,
             tab_id=tab_id,
+            owner_subject=owner_subject,
         ),
         is_new_browser_session=is_new_browser_session,
     )
@@ -90,8 +103,22 @@ def validate_tab_id(value: str) -> str:
     return value
 
 
-def derive_session_storage_key(browser_session_id: str, tab_id: str) -> str:
+def derive_session_storage_key(
+    browser_session_id: str,
+    tab_id: str,
+    owner_subject: str | None = None,
+) -> str:
     """Derive a deterministic filename-safe key without exposing raw identifiers."""
 
-    composite = (f"{len(browser_session_id)}:{browser_session_id}{len(tab_id)}:{tab_id}").encode()
+    if owner_subject is None:
+        # Retain the pre-Phase-21 key only for legacy/test identities. Authenticated
+        # requests always provide a subject and therefore cannot see legacy state.
+        value = f"{len(browser_session_id)}:{browser_session_id}{len(tab_id)}:{tab_id}"
+    else:
+        value = (
+            f"{len(owner_subject)}:{owner_subject}"
+            f"{len(browser_session_id)}:{browser_session_id}"
+            f"{len(tab_id)}:{tab_id}"
+        )
+    composite = value.encode()
     return hashlib.sha256(composite).hexdigest()

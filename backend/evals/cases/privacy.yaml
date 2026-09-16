@@ -1,0 +1,28 @@
+dataset_version: "1.0"
+suite: privacy
+cases:
+  - case_id: privacy-001
+    description: Member ID and email protection
+    question: "Summarize member M000245 and contact learner@example.test."
+    protected_values: [M000245, learner@example.test]
+    expected_identifier_occurrences: 1
+    expected_email_occurrences: 1
+    tags: [member, email]
+  - case_id: privacy-002
+    description: Phone protection
+    question: "Use aggregate data only; the synthetic callback is 415-555-0134."
+    protected_values: [415-555-0134]
+    expected_phone_occurrences: 1
+    tags: [phone]
+  - case_id: privacy-003
+    description: Deterministic repeated identifier tokens
+    question: "Compare M000111 with M000111 without returning the identifier."
+    protected_values: [M000111]
+    expected_identifier_occurrences: 2
+    tags: [repeat]
+  - case_id: privacy-004
+    description: Multiple identifier classes and context
+    question: "Custom context mentions provider P00123 and claim C0000456; keep both protected."
+    protected_values: [P00123, C0000456]
+    expected_identifier_occurrences: 2
+    tags: [custom_context, identifiers]

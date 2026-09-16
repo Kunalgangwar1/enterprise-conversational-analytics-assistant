@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, call
 import pytest
 from sqlalchemy import Engine
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
+from sqlalchemy.sql.elements import TextClause
 
 from app.db.query.exceptions import QueryExecutionError, QueryTimeoutError
 from app.db.query.postgres import PostgresQueryExecutor
@@ -59,6 +60,23 @@ def test_executor_reports_untruncated_short_results() -> None:
     assert query_result.rows == [{"value": 1}]
     assert query_result.row_count == 1
     assert query_result.truncated is False
+
+
+def test_executor_uses_bound_parameters_without_changing_unparameterized_path() -> None:
+    engine, connection, result = _engine_with_query_result([], ["value"])
+    connection.exec_driver_sql.side_effect = [None, None]
+    connection.execute.return_value = result
+    executor = PostgresQueryExecutor(engine, max_rows=2, timeout_ms=100)
+
+    executor.execute(
+        "SELECT 1 AS value WHERE CAST(:start_date AS date) <= CURRENT_DATE",
+        parameters={"start_date": date(2025, 1, 1)},
+    )
+
+    statement, parameters = connection.execute.call_args.args
+    assert isinstance(statement, TextClause)
+    assert str(statement).endswith("CAST(:start_date AS date) <= CURRENT_DATE")
+    assert parameters == {"start_date": date(2025, 1, 1)}
 
 
 def test_per_call_limits_can_only_tighten_configured_limits() -> None:
