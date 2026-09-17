@@ -12,6 +12,7 @@ from app.data_quality.factory import build_data_quality_agent
 from app.data_quality.models import DataQualityResult
 from app.llm.exceptions import LLMError
 from app.privacy import PrivacyProcessor, ResponseUnmasker
+from app.reliability.errors import CircuitOpenError
 from app.security.rate_limit import enforce_rate_limit
 from app.security.request_limits import UserQuestion
 
@@ -52,7 +53,7 @@ def query_data_quality(
             code="data_quality_invalid_response",
             message="Data Quality could not produce a validated response.",
         ) from exc
-    except LLMError as exc:
+    except (LLMError, CircuitOpenError) as exc:
         raise APIError(
             status_code=503,
             code="data_quality_provider_error",

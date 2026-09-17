@@ -16,6 +16,7 @@ from app.api.errors import APIError
 from app.auth.models import AuthPrincipal
 from app.core.config import Settings
 from app.observability.metrics import get_metrics, route_category
+from app.reliability.redis import create_redis_client
 from app.security.exceptions import RateLimitUnavailableError
 
 _FIXED_WINDOW_SCRIPT = """
@@ -111,9 +112,19 @@ class RedisRateLimiter:
         key_prefix: str,
         requests: int,
         window_seconds: int,
+        connect_timeout_seconds: float = 2.0,
+        socket_timeout_seconds: float = 2.0,
+        pool_timeout_seconds: float = 2.0,
+        max_connections: int = 20,
         client: Redis | None = None,
     ) -> None:
-        self._client = client or Redis.from_url(redis_url, decode_responses=True)
+        self._client = client or create_redis_client(
+            redis_url,
+            connect_timeout_seconds=connect_timeout_seconds,
+            socket_timeout_seconds=socket_timeout_seconds,
+            pool_timeout_seconds=pool_timeout_seconds,
+            max_connections=max_connections,
+        )
         self._key_prefix = key_prefix.rstrip(":")
         self._requests = requests
         self._window_seconds = window_seconds
@@ -143,6 +154,14 @@ class RedisRateLimiter:
     def close(self) -> None:
         self._client.close()
 
+    def check_readiness(self) -> None:
+        """Raise when the configured shared limiter cannot be reached."""
+
+        try:
+            self._client.ping()
+        except RedisError as exc:
+            raise RateLimitUnavailableError("rate-limit storage is unavailable") from exc
+
 
 def build_rate_limiter(settings: Settings) -> RateLimiter:
     if not settings.rate_limit_enabled:
@@ -160,6 +179,10 @@ def build_rate_limiter(settings: Settings) -> RateLimiter:
         key_prefix=settings.rate_limit_redis_key_prefix,
         requests=settings.rate_limit_requests,
         window_seconds=settings.rate_limit_window_seconds,
+        connect_timeout_seconds=settings.redis_connect_timeout_seconds,
+        socket_timeout_seconds=settings.redis_socket_timeout_seconds,
+        pool_timeout_seconds=settings.redis_pool_timeout_seconds,
+        max_connections=settings.redis_max_connections,
     )
 
 
@@ -170,6 +193,7 @@ def enforce_rate_limit(request: Request, principal: AuthPrincipal, scope: str) -
     try:
         decision = limiter.check(principal.subject, scope)
     except RateLimitUnavailableError as exc:
+        get_metrics().record("redis.unavailable", attributes={"operation": "rate_limit"})
         get_metrics().record(
             "security.rate_limited_requests",
             1,

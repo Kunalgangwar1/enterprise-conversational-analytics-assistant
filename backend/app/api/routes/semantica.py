@@ -10,6 +10,7 @@ from app.knowledge_catalog.exceptions import EmbeddingError, KnowledgeIndexError
 from app.knowledge_catalog.models import KnowledgeCatalogResult
 from app.llm.exceptions import LLMError
 from app.privacy import PrivacyProcessor, ResponseUnmasker
+from app.reliability.errors import CircuitOpenError
 from app.security.rate_limit import enforce_rate_limit
 from app.security.request_limits import UserQuestion
 from app.semantica.agent import SemanticaAgent
@@ -53,7 +54,7 @@ def query_semantica(
             code="semantica_invalid_response",
             message="Semantica could not produce a validated response.",
         ) from exc
-    except (EmbeddingError, KnowledgeIndexError, LLMError) as exc:
+    except (EmbeddingError, KnowledgeIndexError, LLMError, CircuitOpenError) as exc:
         raise APIError(
             status_code=503,
             code="semantica_unavailable",

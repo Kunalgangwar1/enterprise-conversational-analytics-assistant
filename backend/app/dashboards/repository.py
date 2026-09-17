@@ -81,3 +81,8 @@ class DashboardRepository:
             **self._date_parameters(start_date, end_date),
             "top_n": self._top_n,
         }
+
+    def close(self) -> None:
+        """Release the repository's analytical query pool."""
+
+        self._executor.close()

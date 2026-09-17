@@ -41,12 +41,12 @@ def test_configured_executor_uses_query_url_and_is_cached(
     engine = MagicMock()
     create_engine = MagicMock(return_value=engine)
     monkeypatch.setattr(query_factory, "get_settings", lambda: settings)
-    monkeypatch.setattr(query_factory, "create_engine", create_engine)
+    monkeypatch.setattr(query_factory, "create_database_engine", create_engine)
     query_factory.get_query_executor.cache_clear()
 
     first_executor = query_factory.get_query_executor()
     second_executor = query_factory.get_query_executor()
 
     assert first_executor is second_executor
-    create_engine.assert_called_once_with(str(settings.query_database_url), pool_pre_ping=True)
+    create_engine.assert_called_once_with(str(settings.query_database_url), settings=settings)
     query_factory.get_query_executor.cache_clear()

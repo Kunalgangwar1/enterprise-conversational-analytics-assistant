@@ -38,5 +38,17 @@ class QueryExecutionError(QueryError):
     """Raised when the database cannot execute an otherwise valid query."""
 
 
+class QueryDependencyUnavailableError(QueryExecutionError):
+    """Raised when PostgreSQL or its bounded connection pool is unavailable."""
+
+
+class QueryPoolTimeoutError(QueryDependencyUnavailableError):
+    """Raised when bounded pool acquisition expires before a connection is available."""
+
+
+class QueryPermissionError(QueryDependencyUnavailableError):
+    """Raised when the configured read-only database role lacks required access."""
+
+
 class QueryConfigurationError(QueryError):
     """Raised when safe query execution is not configured correctly."""

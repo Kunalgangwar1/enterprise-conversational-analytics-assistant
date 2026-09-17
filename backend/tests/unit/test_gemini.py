@@ -48,7 +48,7 @@ def _client(sdk: MagicMock, *, timer: MagicMock | None = None) -> GeminiLLMClien
     )
 
 
-def test_gemini_sdk_constructed_with_native_timeout_and_retry_policy(
+def test_gemini_sdk_uses_bounded_transport_timeout_without_nested_retries(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     constructor = MagicMock()
@@ -65,7 +65,10 @@ def test_gemini_sdk_constructed_with_native_timeout_and_retry_policy(
     kwargs = constructor.call_args.kwargs
     assert kwargs["api_key"] == "test-key"
     assert kwargs["http_options"].timeout == 12_500
-    assert kwargs["http_options"].retry_options.attempts == 4
+    assert kwargs["http_options"].retry_options.attempts == 1
+    transport_timeout = kwargs["http_options"].client_args["timeout"]
+    assert transport_timeout.connect == 5
+    assert transport_timeout.read == 12.5
 
 
 def test_text_response_roles_usage_and_metadata_are_normalized() -> None:

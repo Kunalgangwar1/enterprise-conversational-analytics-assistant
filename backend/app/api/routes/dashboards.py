@@ -18,6 +18,7 @@ from app.dashboards.models import (
 from app.dashboards.service import DashboardService
 from app.db.query.exceptions import (
     QueryConfigurationError,
+    QueryDependencyUnavailableError,
     QueryExecutionError,
     QueryTimeoutError,
     QueryValidationError,
@@ -122,6 +123,12 @@ def _run(
             status_code=503,
             code="dashboard_unavailable",
             message="Dashboard analytics are not currently available.",
+        ) from exc
+    except QueryDependencyUnavailableError as exc:
+        raise APIError(
+            status_code=503,
+            code="dashboard_dependency_unavailable",
+            message="Dashboard analytics are temporarily unavailable.",
         ) from exc
     except QueryExecutionError as exc:
         raise APIError(

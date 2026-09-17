@@ -56,6 +56,36 @@ _CATALOG = {
     "llm.tokens.output": _spec(
         "counter", "{token}", "Provider-reported output tokens", "provider", "model", "operation"
     ),
+    "provider.retries": _spec(
+        "counter", "{retry}", "Provider retry attempts", "provider", "operation", "reason_code"
+    ),
+    "provider.timeouts": _spec(
+        "counter", "{timeout}", "Provider timeout failures", "provider", "operation", "reason_code"
+    ),
+    "provider.unavailable": _spec(
+        "counter",
+        "{failure}",
+        "Transient provider or rate-limit failures",
+        "provider",
+        "operation",
+        "reason_code",
+    ),
+    "provider.circuit_open": _spec(
+        "counter",
+        "{rejection}",
+        "Calls rejected by an open provider circuit",
+        "provider",
+        "operation",
+        "reason_code",
+    ),
+    "provider.fallbacks": _spec(
+        "counter",
+        "{fallback}",
+        "Explicit provider fallbacks",
+        "provider",
+        "operation",
+        "reason_code",
+    ),
     "sql.generation.duration": _spec("histogram", "s", "SQL generation duration", "outcome"),
     "sql.validation.decision": _spec(
         "counter", "{decision}", "SQL validation decisions", "validation_decision"
@@ -65,6 +95,9 @@ _CATALOG = {
     "sql.execution.rows": _spec("histogram", "{row}", "Rows returned by read-only SQL", "outcome"),
     "sql.execution.truncated": _spec("counter", "{query}", "Truncated SQL results", "outcome"),
     "sql.execution.errors": _spec("counter", "{query}", "Read-only SQL failures", "outcome"),
+    "db.unavailable": _spec("counter", "{failure}", "Database unavailability", "reason_code"),
+    "db.pool_timeout": _spec("counter", "{timeout}", "Database pool acquisition timeouts"),
+    "db.statement_timeout": _spec("counter", "{timeout}", "Database statement timeouts"),
     "retrieval.requests": _spec(
         "counter", "{request}", "Retrieval operations", "retriever_type", "outcome"
     ),
@@ -100,6 +133,13 @@ _CATALOG = {
     "session.unavailable": _spec(
         "counter", "{failure}", "Session store unavailability", "operation"
     ),
+    "session.conflict_exhausted": _spec(
+        "counter", "{conflict}", "Exhausted session conflict retries", "operation"
+    ),
+    "redis.unavailable": _spec("counter", "{failure}", "Redis backend unavailability", "operation"),
+    "readiness.failed": _spec(
+        "counter", "{failure}", "Failed internal readiness probes", "dependency"
+    ),
     "session.operation.duration": _spec(
         "histogram", "s", "Session operation duration", "operation", "outcome"
     ),
@@ -130,11 +170,15 @@ _BOUNDED_VALUES: dict[str, frozenset[str]] = {
         {
             "generate",
             "generate_structured",
+            "embed_documents",
+            "embed_query",
             "load",
             "update",
             "select_mode",
             "reset",
             "complete_turn",
+            "session",
+            "rate_limit",
         }
     ),
     "reason_code": frozenset(
@@ -147,6 +191,12 @@ _BOUNDED_VALUES: dict[str, frozenset[str]] = {
             "body_too_large",
             "controlled_error",
             "unexpected_error",
+            "timeout",
+            "rate_limited",
+            "unavailable",
+            "circuit_open",
+            "connection",
+            "permission",
         }
     ),
     "route_category": frozenset({"api", "chat", "sql", "health", "other"}),
@@ -156,6 +206,7 @@ _BOUNDED_VALUES: dict[str, frozenset[str]] = {
     ),
     "provider": frozenset({"gemini", "azure_openai", "unknown"}),
     "model_selected": frozenset({"naive", "moving_average", "linear_trend", "seasonal_naive"}),
+    "dependency": frozenset({"database", "redis_session", "redis_rate_limit"}),
 }
 _ROUTING_VALUES = frozenset(
     {

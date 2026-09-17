@@ -54,6 +54,11 @@ class InstrumentedLLMClient:
             span.set_attribute("outcome", "success")
             return response
 
+    def close(self) -> None:
+        close = getattr(self._client, "close", None)
+        if callable(close):
+            close()
+
     def _record_call(self, operation: str, outcome: str, duration: float) -> None:
         attributes = {**self._attributes(operation), "outcome": outcome}
         metrics = get_metrics()

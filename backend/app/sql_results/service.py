@@ -67,3 +67,8 @@ class SQLExecutionService:
             summary_source=summary_source,
             chart=chart,
         )
+
+    def close(self) -> None:
+        """Release the underlying analytical query pool."""
+
+        self._query_executor.close()

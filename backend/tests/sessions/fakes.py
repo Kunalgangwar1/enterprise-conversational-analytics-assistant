@@ -72,6 +72,10 @@ class FakeRedisClient:
         self.closed = True
         self.backend.closed_clients += 1
 
+    def ping(self) -> bool:
+        self._ensure_available()
+        return True
+
     def ttl(self, key: str) -> int:
         self.backend.purge(key)
         entry = self.backend.entries.get(key)

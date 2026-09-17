@@ -51,6 +51,9 @@ class FakeLLMClient:
             self._structured_payload_index += 1
         return response_model.model_validate(payload)
 
+    def close(self) -> None:
+        """Match the production lifecycle contract without owning resources."""
+
 
 class FakeStructuredAnswer(BaseModel):
     """Small reusable structured response used by fake-client tests."""

@@ -43,6 +43,11 @@ class DashboardService:
     def __init__(self, repository: DashboardRepository) -> None:
         self._repository = repository
 
+    def close(self) -> None:
+        """Release database resources owned by the dashboard repository."""
+
+        self._repository.close()
+
     def overview(
         self,
         start_date: str | None = None,

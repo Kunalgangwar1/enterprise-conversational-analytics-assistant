@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from redis import Redis
 from redis.exceptions import RedisError, WatchError
 
+from app.reliability.redis import create_redis_client
 from app.sessions.exceptions import (
     SessionConflictError,
     SessionCorruptError,
@@ -35,9 +36,19 @@ class RedisSessionStore:
         key_prefix: str,
         ttl_seconds: int,
         max_update_retries: int,
+        connect_timeout_seconds: float = 2.0,
+        socket_timeout_seconds: float = 2.0,
+        pool_timeout_seconds: float = 2.0,
+        max_connections: int = 20,
         client: Redis | None = None,
     ) -> None:
-        self._client = client or Redis.from_url(redis_url, decode_responses=True)
+        self._client = client or create_redis_client(
+            redis_url,
+            connect_timeout_seconds=connect_timeout_seconds,
+            socket_timeout_seconds=socket_timeout_seconds,
+            pool_timeout_seconds=pool_timeout_seconds,
+            max_connections=max_connections,
+        )
         self._key_prefix = key_prefix.rstrip(":")
         self._ttl_seconds = ttl_seconds
         self._max_update_retries = max_update_retries
@@ -113,6 +124,14 @@ class RedisSessionStore:
         """Close the Redis client and its owned connection pool."""
 
         self._client.close()
+
+    def check_readiness(self) -> None:
+        """Raise when the configured shared Redis backend is unavailable."""
+
+        try:
+            self._client.ping()
+        except RedisError as exc:
+            raise SessionStoreUnavailableError("Redis session storage is unavailable") from exc
 
     def key_for(self, identity: SessionIdentity) -> str:
         """Return a prefix plus the existing SHA-256 identity digest."""

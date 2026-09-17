@@ -12,7 +12,11 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.core.config import Settings
-from app.db.query.exceptions import QueryExecutionError, QueryTimeoutError
+from app.db.query.exceptions import (
+    QueryDependencyUnavailableError,
+    QueryExecutionError,
+    QueryTimeoutError,
+)
 from app.main import create_app
 from app.sessions.json_store import JsonFileSessionStore
 from app.sessions.models import SessionState
@@ -209,6 +213,11 @@ def test_sql_and_token_mappings_are_isolated_by_tab(
     ("error", "status_code", "code"),
     [
         (QueryTimeoutError("raw database timeout"), 504, "query_timeout"),
+        (
+            QueryDependencyUnavailableError("postgresql://user:secret@host/db"),
+            503,
+            "query_dependency_unavailable",
+        ),
         (QueryExecutionError("postgresql://user:secret@host/db"), 500, "query_execution_failed"),
         (
             SQLTokenResolutionError("missing original M000001"),

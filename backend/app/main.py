@@ -1,5 +1,6 @@
 """FastAPI application factory and entry point."""
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -16,9 +17,12 @@ from app.core.config import Settings, get_settings
 from app.dashboards.service import DashboardService
 from app.data_discovery.search import DataDiscoveryService
 from app.data_quality.agent import DataQualityAgent
+from app.db.session import engine as database_engine
 from app.knowledge_catalog.agent import KnowledgeCatalogAgent
 from app.observability import initialize_observability
 from app.observability.middleware import ObservabilityMiddleware
+from app.reliability.readiness import ReadinessProbe, ReadinessService
+from app.reliability.resources import close_provider_resources
 from app.security.headers import SecurityHeadersMiddleware
 from app.security.rate_limit import RateLimiter, build_rate_limiter
 from app.security.request_limits import RequestBodyLimitMiddleware
@@ -28,6 +32,32 @@ from app.sessions.factory import build_session_store
 from app.sessions.service import SessionService
 from app.sessions.store import SessionStore
 from app.sql_results.service import SQLExecutionService
+
+logger = logging.getLogger(__name__)
+
+
+def _database_readiness_check() -> None:
+    with database_engine.connect() as connection:
+        connection.exec_driver_sql("SELECT 1")
+
+
+def _close_safely(resource: object | None, operation: str) -> None:
+    if resource is None:
+        return
+    close = getattr(resource, "close", None)
+    if close is None:
+        return
+    try:
+        close()
+    except Exception:
+        logger.warning("Application resource shutdown failed", extra={"operation": operation})
+
+
+def _dispose_database_safely() -> None:
+    try:
+        database_engine.dispose()
+    except Exception:
+        logger.warning("Application resource shutdown failed", extra={"operation": "database"})
 
 
 def create_app(
@@ -42,20 +72,34 @@ def create_app(
     dashboard_service: DashboardService | None = None,
     authentication_backend: AuthenticationBackend | None = None,
     rate_limiter: RateLimiter | None = None,
+    readiness_service: ReadinessService | None = None,
 ) -> FastAPI:
     """Create and configure the FastAPI application."""
     resolved_settings = settings or get_settings()
     resolved_session_store = session_store or build_session_store(resolved_settings)
     resolved_rate_limiter = rate_limiter or build_rate_limiter(resolved_settings)
     observability = initialize_observability(resolved_settings)
+    if readiness_service is None:
+        readiness_probes = [ReadinessProbe("database", _database_readiness_check)]
+        session_readiness = getattr(resolved_session_store, "check_readiness", None)
+        if session_readiness is not None:
+            readiness_probes.append(ReadinessProbe("redis_session", session_readiness))
+        limiter_readiness = getattr(resolved_rate_limiter, "check_readiness", None)
+        if limiter_readiness is not None:
+            readiness_probes.append(ReadinessProbe("redis_rate_limit", limiter_readiness))
+        readiness_service = ReadinessService(readiness_probes)
 
     @asynccontextmanager
     async def lifespan(_application: FastAPI) -> AsyncIterator[None]:
         try:
             yield
         finally:
-            resolved_rate_limiter.close()
-            resolved_session_store.close()
+            _close_safely(_application.state.sql_execution_service, "sql_execution")
+            _close_safely(_application.state.dashboard_service, "dashboard")
+            _close_safely(resolved_rate_limiter, "rate_limit")
+            _close_safely(resolved_session_store, "session")
+            close_provider_resources()
+            _dispose_database_safely()
             observability.shutdown()
 
     application = FastAPI(
@@ -78,6 +122,7 @@ def create_app(
         )
     )
     application.state.rate_limiter = resolved_rate_limiter
+    application.state.readiness_service = readiness_service
     application.state.session_service = SessionService(
         resolved_session_store,
         chat_mode_registry,

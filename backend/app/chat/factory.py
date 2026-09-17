@@ -52,6 +52,10 @@ class DeferredLLMClient:
     ) -> StructuredModel:
         return self._get().generate_structured(request, response_model)
 
+    def close(self) -> None:
+        if self._client is not None:
+            self._client.close()
+
 
 def build_chat_orchestrator(
     settings: Settings,

@@ -15,10 +15,13 @@ from app.llm.exceptions import (
     LLMConfigurationError,
     LLMProviderError,
     LLMRateLimitError,
+    LLMRequestError,
     LLMStructuredOutputError,
     LLMTimeoutError,
+    LLMUnavailableError,
 )
 from app.llm.models import LLMProvider, LLMRequest, LLMResponse, LLMRole, LLMUsage
+from app.reliability.errors import retry_after_from_exception
 
 
 class GeminiLLMClient:
@@ -32,6 +35,7 @@ class GeminiLLMClient:
         timeout_seconds: float,
         max_retries: int,
         max_output_tokens: int,
+        connect_timeout_seconds: float = 5.0,
         sdk_client: Any | None = None,
         timer: Callable[[], float] = perf_counter,
     ) -> None:
@@ -45,6 +49,10 @@ class GeminiLLMClient:
             raise LLMConfigurationError("LLM_MAX_RETRIES cannot be negative")
         if max_output_tokens < 1:
             raise LLMConfigurationError("LLM_MAX_OUTPUT_TOKENS must be at least one")
+        if connect_timeout_seconds <= 0 or connect_timeout_seconds > timeout_seconds:
+            raise LLMConfigurationError(
+                "LLM_CONNECT_TIMEOUT_SECONDS must be positive and not exceed the request timeout"
+            )
 
         self._model = model.strip()
         self._max_output_tokens = max_output_tokens
@@ -53,9 +61,17 @@ class GeminiLLMClient:
             api_key=api_key,
             http_options=types.HttpOptions(
                 timeout=int(timeout_seconds * 1_000),
-                retry_options=types.HttpRetryOptions(attempts=max_retries + 1),
+                client_args={
+                    "timeout": httpx.Timeout(timeout_seconds, connect=connect_timeout_seconds)
+                },
+                retry_options=types.HttpRetryOptions(attempts=1),
             ),
         )
+
+    def close(self) -> None:
+        close = getattr(self._client, "close", None)
+        if callable(close):
+            close()
 
     def generate(self, request: LLMRequest) -> LLMResponse:
         started_at = self._timer()
@@ -66,7 +82,7 @@ class GeminiLLMClient:
                 config=self._config(request),
             )
             output_text = response.text
-        except (errors.APIError, httpx.TimeoutException, TimeoutError) as exc:
+        except (errors.APIError, httpx.TransportError, TimeoutError) as exc:
             _raise_translated_gemini_error(exc)
         except (ValueError, AttributeError) as exc:
             raise LLMProviderError("Gemini returned an invalid text response") from exc
@@ -92,7 +108,7 @@ class GeminiLLMClient:
                 contents=_gemini_contents(request),
                 config=self._config(request, response_model=response_model),
             )
-        except (errors.APIError, httpx.TimeoutException, TimeoutError) as exc:
+        except (errors.APIError, httpx.TransportError, TimeoutError) as exc:
             _raise_translated_gemini_error(exc)
         parsed = getattr(response, "parsed", None)
         if parsed is None:
@@ -156,11 +172,20 @@ def _nonnegative_int(value: object, attribute: str) -> int | None:
 def _raise_translated_gemini_error(exc: Exception) -> NoReturn:
     if isinstance(exc, (httpx.TimeoutException, TimeoutError)):
         raise LLMTimeoutError("LLM provider request timed out") from exc
+    if isinstance(exc, httpx.TransportError):
+        raise LLMUnavailableError("LLM provider is unavailable") from exc
     code = getattr(exc, "code", None)
     if code in {401, 403}:
         raise LLMAuthenticationError("LLM provider authentication failed") from exc
     if code == 429:
-        raise LLMRateLimitError("LLM provider rate limit was exceeded") from exc
+        raise LLMRateLimitError(
+            "LLM provider rate limit was exceeded",
+            retry_after_seconds=retry_after_from_exception(exc),
+        ) from exc
     if code in {408, 504}:
         raise LLMTimeoutError("LLM provider request timed out") from exc
+    if code in {500, 502, 503}:
+        raise LLMUnavailableError("LLM provider is unavailable") from exc
+    if isinstance(code, int) and 400 <= code < 500:
+        raise LLMRequestError("LLM provider rejected the request") from exc
     raise LLMProviderError("LLM provider request failed") from exc

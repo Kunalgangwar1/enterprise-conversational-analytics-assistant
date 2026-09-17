@@ -105,6 +105,10 @@ def test_factory_selects_redis_with_configured_values(tmp_path: Path) -> None:
         key_prefix="custom:sessions",
         ttl_seconds=321,
         max_update_retries=7,
+        connect_timeout_seconds=2.0,
+        socket_timeout_seconds=2.0,
+        pool_timeout_seconds=2.0,
+        max_connections=20,
     )
 
 

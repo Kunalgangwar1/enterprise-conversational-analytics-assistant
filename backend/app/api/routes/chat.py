@@ -31,6 +31,7 @@ from app.knowledge_catalog.exceptions import KnowledgeCatalogError
 from app.llm.exceptions import LLMError
 from app.nlp2sql.exceptions import NLP2SQLError
 from app.nlp2sql.multihop.exceptions import MultiHopError
+from app.reliability.errors import CircuitOpenError
 from app.routing.exceptions import RoutingError
 from app.security.rate_limit import enforce_rate_limit
 from app.semantica.exceptions import SemanticaError
@@ -102,7 +103,7 @@ def chat(
         ) from exc
     except SessionStoreError as exc:
         raise session_storage_api_error(exc) from exc
-    except (LLMError, RoutingError) as exc:
+    except (LLMError, RoutingError, CircuitOpenError) as exc:
         raise APIError(
             status_code=503,
             code="provider_unavailable",

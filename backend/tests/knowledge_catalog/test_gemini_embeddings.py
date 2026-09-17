@@ -8,13 +8,13 @@ from google.genai import errors
 
 import app.knowledge_catalog.embeddings.factory as factory
 from app.core.config import Settings
-from app.knowledge_catalog.embeddings.azure_openai import AzureOpenAIEmbeddingClient
 from app.knowledge_catalog.embeddings.gemini import GeminiEmbeddingClient
 from app.knowledge_catalog.exceptions import (
     EmbeddingAuthenticationError,
     EmbeddingConfigurationError,
     EmbeddingProviderError,
 )
+from app.reliability.clients import ResilientEmbeddingClient
 
 
 def test_gemini_document_and_query_embeddings_use_retrieval_semantics() -> None:
@@ -76,7 +76,8 @@ def test_embedding_factory_selects_gemini_and_retains_azure(
             azure_openai_embedding_deployment="embedding-deployment",
         )
     )
-    assert isinstance(azure, AzureOpenAIEmbeddingClient)
+    assert isinstance(azure, ResilientEmbeddingClient)
+    assert azure.provider_name == "azure_openai"
 
 
 def test_missing_key_and_provider_error_are_safe() -> None:

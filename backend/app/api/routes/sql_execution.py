@@ -16,6 +16,7 @@ from app.auth.models import AuthPrincipal
 from app.auth.permissions import Permission
 from app.db.query.exceptions import (
     QueryConfigurationError,
+    QueryDependencyUnavailableError,
     QueryExecutionError,
     QueryTimeoutError,
     QueryValidationError,
@@ -105,6 +106,12 @@ def execute_sql(
             status_code=503,
             code="query_execution_unavailable",
             message="Analytical query execution is not configured.",
+        ) from exc
+    except QueryDependencyUnavailableError as exc:
+        raise APIError(
+            status_code=503,
+            code="query_dependency_unavailable",
+            message="The analytical database is temporarily unavailable.",
         ) from exc
     except QueryExecutionError as exc:
         raise APIError(

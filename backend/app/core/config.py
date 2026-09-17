@@ -93,6 +93,10 @@ class Settings(BaseSettings):
     test_database_url: PostgresDsn | None = Field(default=None, repr=False)
     query_database_url: PostgresDsn | None = Field(default=None, repr=False)
     query_test_database_url: PostgresDsn | None = Field(default=None, repr=False)
+    database_connect_timeout_seconds: int = Field(default=5, ge=1, le=30)
+    database_pool_timeout_seconds: float = Field(default=5.0, gt=0, le=30)
+    database_pool_size: int = Field(default=5, ge=1, le=20)
+    database_max_overflow: int = Field(default=5, ge=0, le=20)
     query_max_rows: int = Field(default=500, ge=1)
     query_timeout_ms: int = Field(default=5_000, ge=1)
     dashboard_top_n: int = Field(default=10, ge=1, le=50)
@@ -126,8 +130,19 @@ class Settings(BaseSettings):
     azure_openai_endpoint: str | None = None
     azure_openai_api_key: SecretStr | None = None
     azure_openai_deployment: str | None = None
+    llm_connect_timeout_seconds: float = Field(default=5.0, gt=0, le=30)
     llm_timeout_seconds: float = Field(default=30.0, gt=0)
-    llm_max_retries: int = Field(default=2, ge=0)
+    llm_operation_timeout_seconds: float = Field(default=90.0, gt=0, le=300)
+    llm_max_retries: int = Field(default=2, ge=0, le=5)
+    llm_retry_initial_delay_seconds: float = Field(default=0.5, ge=0, le=30)
+    llm_retry_max_delay_seconds: float = Field(default=8.0, ge=0, le=60)
+    llm_retry_max_total_delay_seconds: float = Field(default=15.0, ge=0, le=120)
+    llm_retry_jitter_ratio: float = Field(default=0.20, ge=0, le=1)
+    llm_circuit_breaker_enabled: bool = True
+    llm_circuit_failure_threshold: int = Field(default=5, ge=1, le=100)
+    llm_circuit_recovery_timeout_seconds: float = Field(default=30.0, gt=0, le=600)
+    llm_circuit_half_open_max_calls: int = Field(default=1, ge=1, le=10)
+    llm_fallback_provider: Literal["none", "gemini", "azure_openai"] = "none"
     llm_max_output_tokens: int = Field(default=2_000, ge=1)
     intent_router_min_confidence: float = Field(default=0.60, ge=0, le=1)
     nlp2sql_max_domains: int = Field(default=3, ge=1)
@@ -160,6 +175,10 @@ class Settings(BaseSettings):
         pattern=r"^[A-Za-z0-9:_-]+$",
     )
     session_redis_max_update_retries: int = Field(default=5, ge=1, le=50)
+    redis_connect_timeout_seconds: float = Field(default=2.0, gt=0, le=30)
+    redis_socket_timeout_seconds: float = Field(default=2.0, gt=0, le=30)
+    redis_pool_timeout_seconds: float = Field(default=2.0, gt=0, le=30)
+    redis_max_connections: int = Field(default=20, ge=1, le=100)
     tab_id_header: str = Field(
         default="X-Tab-Id",
         min_length=1,
@@ -244,6 +263,29 @@ class Settings(BaseSettings):
             raise ValueError(
                 "FORECAST_BACKTEST_POINTS must be lower than FORECAST_MIN_HISTORY_POINTS"
             )
+        return self
+
+    @model_validator(mode="after")
+    def validate_provider_reliability_settings(self) -> Self:
+        """Keep transport, operation, and retry budgets bounded and internally ordered."""
+
+        if self.llm_connect_timeout_seconds > self.llm_timeout_seconds:
+            raise ValueError("LLM_CONNECT_TIMEOUT_SECONDS cannot exceed LLM_TIMEOUT_SECONDS")
+        if self.llm_timeout_seconds > self.llm_operation_timeout_seconds:
+            raise ValueError("LLM_TIMEOUT_SECONDS cannot exceed LLM_OPERATION_TIMEOUT_SECONDS")
+        if self.llm_retry_initial_delay_seconds > self.llm_retry_max_delay_seconds:
+            raise ValueError(
+                "LLM_RETRY_INITIAL_DELAY_SECONDS cannot exceed LLM_RETRY_MAX_DELAY_SECONDS"
+            )
+        if self.llm_retry_max_total_delay_seconds > self.llm_operation_timeout_seconds:
+            raise ValueError(
+                "LLM_RETRY_MAX_TOTAL_DELAY_SECONDS cannot exceed LLM_OPERATION_TIMEOUT_SECONDS"
+            )
+        if (
+            self.llm_fallback_provider != "none"
+            and self.llm_fallback_provider == self.llm_provider.strip().lower()
+        ):
+            raise ValueError("LLM_FALLBACK_PROVIDER must differ from LLM_PROVIDER")
         return self
 
     @model_validator(mode="after")

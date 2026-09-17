@@ -20,6 +20,7 @@ from app.knowledge_catalog.factory import build_knowledge_catalog_agent
 from app.knowledge_catalog.models import KnowledgeCatalogResult
 from app.llm.exceptions import LLMError
 from app.privacy import PrivacyProcessor, ResponseUnmasker
+from app.reliability.errors import CircuitOpenError
 from app.security.rate_limit import enforce_rate_limit
 from app.security.request_limits import UserQuestion
 
@@ -69,7 +70,7 @@ def query_knowledge_catalog(
             code="knowledge_catalog_invalid_response",
             message="Knowledge Catalog could not produce a validated response.",
         ) from exc
-    except (EmbeddingError, LLMError) as exc:
+    except (EmbeddingError, LLMError, CircuitOpenError) as exc:
         raise APIError(
             status_code=503,
             code="knowledge_catalog_provider_error",

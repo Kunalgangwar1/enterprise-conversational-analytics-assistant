@@ -3,8 +3,11 @@
 from app.db.query.base import QueryExecutor
 from app.db.query.exceptions import (
     QueryConfigurationError,
+    QueryDependencyUnavailableError,
     QueryError,
     QueryExecutionError,
+    QueryPermissionError,
+    QueryPoolTimeoutError,
     QueryTimeoutError,
     QueryValidationError,
     QueryValidationReason,
@@ -14,8 +17,11 @@ from app.db.query.models import QueryExecutionResult
 
 __all__ = [
     "QueryConfigurationError",
+    "QueryDependencyUnavailableError",
     "QueryError",
     "QueryExecutionError",
+    "QueryPermissionError",
+    "QueryPoolTimeoutError",
     "QueryExecutionResult",
     "QueryExecutor",
     "QueryTimeoutError",

@@ -5,8 +5,11 @@ from time import perf_counter
 from typing import NoReturn
 from urllib.parse import urlsplit, urlunsplit
 
+import httpx
 from openai import (
+    APIConnectionError,
     APIError,
+    APIStatusError,
     APITimeoutError,
     AuthenticationError,
     OpenAI,
@@ -21,10 +24,13 @@ from app.llm.exceptions import (
     LLMConfigurationError,
     LLMProviderError,
     LLMRateLimitError,
+    LLMRequestError,
     LLMStructuredOutputError,
     LLMTimeoutError,
+    LLMUnavailableError,
 )
 from app.llm.models import LLMProvider, LLMRequest, LLMResponse, LLMUsage
+from app.reliability.errors import retry_after_from_exception
 
 
 class AzureOpenAILLMClient:
@@ -39,6 +45,7 @@ class AzureOpenAILLMClient:
         timeout_seconds: float,
         max_retries: int,
         max_output_tokens: int,
+        connect_timeout_seconds: float = 5.0,
         sdk_client: OpenAI | None = None,
         timer: Callable[[], float] = perf_counter,
     ) -> None:
@@ -52,6 +59,10 @@ class AzureOpenAILLMClient:
             raise LLMConfigurationError("LLM_MAX_RETRIES cannot be negative")
         if max_output_tokens < 1:
             raise LLMConfigurationError("LLM_MAX_OUTPUT_TOKENS must be at least one")
+        if connect_timeout_seconds <= 0 or connect_timeout_seconds > timeout_seconds:
+            raise LLMConfigurationError(
+                "LLM_CONNECT_TIMEOUT_SECONDS must be positive and not exceed the request timeout"
+            )
 
         self._provider = LLMProvider.AZURE_OPENAI
         self._deployment = deployment.strip()
@@ -60,9 +71,12 @@ class AzureOpenAILLMClient:
         self._client = sdk_client or OpenAI(
             api_key=api_key,
             base_url=normalize_azure_openai_base_url(endpoint),
-            timeout=timeout_seconds,
-            max_retries=max_retries,
+            timeout=httpx.Timeout(timeout_seconds, connect=connect_timeout_seconds),
+            max_retries=0,
         )
+
+    def close(self) -> None:
+        self._client.close()
 
     def generate(self, request: LLMRequest) -> LLMResponse:
         """Generate text with the Responses API and return safe typed metadata."""
@@ -184,7 +198,19 @@ def _raise_translated_provider_error(exc: OpenAIError) -> NoReturn:
     if isinstance(exc, AuthenticationError):
         raise LLMAuthenticationError("LLM provider authentication failed") from exc
     if isinstance(exc, RateLimitError):
-        raise LLMRateLimitError("LLM provider rate limit was exceeded") from exc
+        raise LLMRateLimitError(
+            "LLM provider rate limit was exceeded",
+            retry_after_seconds=retry_after_from_exception(exc),
+        ) from exc
+    if isinstance(exc, APIConnectionError):
+        raise LLMUnavailableError("LLM provider is unavailable") from exc
+    if isinstance(exc, APIStatusError):
+        if exc.status_code == 408:
+            raise LLMTimeoutError("LLM provider request timed out") from exc
+        if exc.status_code in {500, 502, 503, 504}:
+            raise LLMUnavailableError("LLM provider is unavailable") from exc
+        if 400 <= exc.status_code < 500:
+            raise LLMRequestError("LLM provider rejected the request") from exc
     if isinstance(exc, APIError):
         raise LLMProviderError("LLM provider request failed") from exc
     raise LLMProviderError("Unexpected LLM provider failure") from exc

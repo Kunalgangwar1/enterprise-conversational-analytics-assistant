@@ -7,6 +7,9 @@ from app.knowledge_catalog.embeddings.azure_openai import AzureOpenAIEmbeddingCl
 from app.knowledge_catalog.embeddings.base import EmbeddingClient
 from app.knowledge_catalog.embeddings.gemini import GeminiEmbeddingClient
 from app.knowledge_catalog.exceptions import EmbeddingConfigurationError
+from app.reliability.clients import ResilientEmbeddingClient
+from app.reliability.factory import build_provider_retry_policy
+from app.reliability.resources import register_provider_resource
 
 
 @lru_cache(maxsize=1)
@@ -26,17 +29,30 @@ def create_embedding_client(settings: Settings) -> EmbeddingClient:
         )
         if not key.strip():
             raise EmbeddingConfigurationError("Missing required Gemini setting: GEMINI_API_KEY")
-        return GeminiEmbeddingClient(
+        raw: EmbeddingClient = GeminiEmbeddingClient(
             api_key=key,
             model=settings.gemini_embedding_model,
             dimensions=settings.embedding_dimensions,
             timeout_seconds=settings.llm_timeout_seconds,
-            max_retries=settings.llm_max_retries,
+            connect_timeout_seconds=settings.llm_connect_timeout_seconds,
+            max_retries=0,
         )
-    if provider != "azure_openai":
+    elif provider == "azure_openai":
+        raw = _create_azure_client(settings)
+    else:
         raise EmbeddingConfigurationError(
             f"Unsupported embedding provider: {settings.embedding_provider}"
         )
+    return register_provider_resource(
+        ResilientEmbeddingClient(
+            raw,
+            provider=provider,
+            policy=build_provider_retry_policy(settings),
+        )
+    )
+
+
+def _create_azure_client(settings: Settings) -> EmbeddingClient:
     missing: list[str] = []
     if not settings.azure_openai_endpoint or not settings.azure_openai_endpoint.strip():
         missing.append("AZURE_OPENAI_ENDPOINT")
@@ -60,5 +76,6 @@ def create_embedding_client(settings: Settings) -> EmbeddingClient:
         deployment=deployment,
         dimensions=settings.embedding_dimensions,
         timeout_seconds=settings.llm_timeout_seconds,
-        max_retries=settings.llm_max_retries,
+        connect_timeout_seconds=settings.llm_connect_timeout_seconds,
+        max_retries=0,
     )

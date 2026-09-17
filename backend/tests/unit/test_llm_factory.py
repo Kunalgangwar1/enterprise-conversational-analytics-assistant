@@ -8,6 +8,7 @@ import pytest
 import app.llm.factory as factory_module
 from app.core.config import Settings
 from app.llm.exceptions import LLMConfigurationError
+from app.reliability.clients import ResilientLLMClient
 
 
 @pytest.fixture(autouse=True)
@@ -72,6 +73,6 @@ def test_get_llm_client_constructs_lazily_and_caches(monkeypatch: pytest.MonkeyP
     first = factory_module.get_llm_client()
     second = factory_module.get_llm_client()
 
-    assert first is constructed_client
-    assert second is constructed_client
+    assert first is second
+    assert isinstance(first, ResilientLLMClient)
     constructor.assert_called_once()

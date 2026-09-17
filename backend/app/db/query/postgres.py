@@ -4,11 +4,14 @@ from collections.abc import Mapping
 from time import perf_counter
 
 from sqlalchemy import Engine, text
-from sqlalchemy.exc import DBAPIError, SQLAlchemyError
+from sqlalchemy.exc import DBAPIError, OperationalError, SQLAlchemyError, TimeoutError
 
 from app.db.query.exceptions import (
     QueryConfigurationError,
+    QueryDependencyUnavailableError,
     QueryExecutionError,
+    QueryPermissionError,
+    QueryPoolTimeoutError,
     QueryTimeoutError,
 )
 from app.db.query.guard import validate_read_only_sql
@@ -17,11 +20,26 @@ from app.observability.metrics import ApplicationMetrics, get_metrics
 from app.observability.tracing import start_span
 
 _POSTGRES_QUERY_CANCELED_SQLSTATE = "57014"
+_POSTGRES_INSUFFICIENT_PRIVILEGE_SQLSTATE = "42501"
+_POSTGRES_UNAVAILABLE_SQLSTATES = frozenset({"53300", "57P01", "57P02", "57P03"})
 
 
 def _is_statement_timeout(error: DBAPIError) -> bool:
     original_error = error.orig
     return getattr(original_error, "sqlstate", None) == _POSTGRES_QUERY_CANCELED_SQLSTATE
+
+
+def _sqlstate(error: DBAPIError) -> str | None:
+    return getattr(error.orig, "sqlstate", None)
+
+
+def _is_database_unavailable(error: DBAPIError) -> bool:
+    sqlstate = _sqlstate(error)
+    return bool(
+        error.connection_invalidated
+        or isinstance(error, OperationalError)
+        or (sqlstate and (sqlstate.startswith("08") or sqlstate in _POSTGRES_UNAVAILABLE_SQLSTATES))
+    )
 
 
 class PostgresQueryExecutor:
@@ -81,12 +99,29 @@ class PostgresQueryExecutor:
                     )
                     columns = list(result.keys())
                     fetched_rows = result.mappings().fetchmany(effective_max_rows + 1)
+            except TimeoutError as exc:
+                self._record_error(metrics, started_at, "unavailable")
+                metrics.record("db.pool_timeout")
+                raise QueryPoolTimeoutError(
+                    "The database connection pool is temporarily unavailable."
+                ) from exc
             except DBAPIError as exc:
                 outcome = "timeout" if _is_statement_timeout(exc) else "error"
                 self._record_error(metrics, started_at, outcome)
                 if outcome == "timeout":
+                    metrics.record("db.statement_timeout")
                     raise QueryTimeoutError(
                         "The query exceeded the configured execution timeout."
+                    ) from exc
+                if _sqlstate(exc) == _POSTGRES_INSUFFICIENT_PRIVILEGE_SQLSTATE:
+                    metrics.record("db.unavailable", attributes={"reason_code": "permission"})
+                    raise QueryPermissionError(
+                        "The analytical database role cannot perform this operation."
+                    ) from exc
+                if _is_database_unavailable(exc):
+                    metrics.record("db.unavailable", attributes={"reason_code": "connection"})
+                    raise QueryDependencyUnavailableError(
+                        "The analytical database is temporarily unavailable."
                     ) from exc
                 raise QueryExecutionError("The query could not be executed.") from exc
             except SQLAlchemyError as exc:
@@ -111,6 +146,11 @@ class PostgresQueryExecutor:
                 truncated=truncated,
                 elapsed_ms=elapsed * 1_000,
             )
+
+    def close(self) -> None:
+        """Dispose the owned SQLAlchemy engine and all pooled connections."""
+
+        self._engine.dispose()
 
     @staticmethod
     def _record_error(metrics: ApplicationMetrics, started_at: float, outcome: str) -> None:

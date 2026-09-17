@@ -34,3 +34,8 @@ class EmbeddingClient(Protocol):
         """Embed one retrieval query."""
 
         ...
+
+    def close(self) -> None:
+        """Release provider transport resources."""
+
+        ...

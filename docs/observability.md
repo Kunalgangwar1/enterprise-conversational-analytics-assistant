@@ -93,6 +93,11 @@ All durations use seconds. No arbitrary dimensions are accepted.
 | `llm.duration` | histogram | s | LLM call latency | provider, model, operation, outcome |
 | `llm.tokens.input` | counter | token | Provider-reported input usage | provider, model, operation |
 | `llm.tokens.output` | counter | token | Provider-reported output usage | provider, model, operation |
+| `provider.retries` | counter | retry | Retried transient provider calls | provider, operation, reason_code |
+| `provider.timeouts` | counter | timeout | Provider timeout failures | provider, operation, reason_code |
+| `provider.unavailable` | counter | failure | Transient/rate-limit failures | provider, operation, reason_code |
+| `provider.circuit_open` | counter | rejection | Open-circuit fast failures | provider, operation, reason_code |
+| `provider.fallbacks` | counter | fallback | Explicit secondary-provider use | provider, operation, reason_code |
 | `sql.generation.duration` | histogram | s | SQL generation latency | outcome |
 | `sql.validation.decision` | counter | decision | Accept/reject/rewrite decisions | validation_decision |
 | `sql.validation.rewrites` | counter | rewrite | Validator rewrites | outcome |
@@ -130,7 +135,7 @@ estimate them.
 
 Manual spans exist only at central boundaries: `http.request`, `chat.orchestrate`, `routing.select`,
 `specialist.execute`, `llm.call`, `sql.generate`, `sql.validate`, `db.query`, `retrieval.search`,
-`forecast.run`, `session.load`, and `session.update`. Attributes are centrally allowlisted and limited to
+`forecast.run`, `session.load`, `session.update`, and `provider.call`. Attributes are centrally allowlisted and limited to
 method/route/status, operation/outcome, provider/model, selected mode/route/strategy/result type,
 authorization outcome, PostgreSQL operation/row count/truncation/timeout, retriever type/result
 count, forecast model, and session operation. There is no `db.statement`, prompt/content capture,

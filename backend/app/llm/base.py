@@ -26,3 +26,8 @@ class LLMClient(Protocol):
         """Generate and validate a typed structured result."""
 
         ...
+
+    def close(self) -> None:
+        """Release provider transport resources."""
+
+        ...

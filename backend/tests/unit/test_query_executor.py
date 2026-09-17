@@ -6,10 +6,16 @@ from unittest.mock import MagicMock, call
 
 import pytest
 from sqlalchemy import Engine
-from sqlalchemy.exc import DBAPIError, SQLAlchemyError
+from sqlalchemy.exc import DBAPIError, OperationalError, SQLAlchemyError, TimeoutError
 from sqlalchemy.sql.elements import TextClause
 
-from app.db.query.exceptions import QueryExecutionError, QueryTimeoutError
+from app.db.query.exceptions import (
+    QueryDependencyUnavailableError,
+    QueryExecutionError,
+    QueryPermissionError,
+    QueryPoolTimeoutError,
+    QueryTimeoutError,
+)
 from app.db.query.postgres import PostgresQueryExecutor
 
 
@@ -140,3 +146,103 @@ def test_generic_database_error_is_sanitized_and_chained() -> None:
 
     assert "secret" not in str(captured.value)
     assert captured.value.__cause__ is raw_error
+
+
+def test_pool_exhaustion_is_bounded_and_sanitized_without_retry() -> None:
+    engine = MagicMock(spec=Engine)
+    raw_error = TimeoutError("QueuePool limit reached for postgresql://user:secret@host/db")
+    engine.connect.side_effect = raw_error
+    executor = PostgresQueryExecutor(engine, max_rows=5, timeout_ms=100)
+
+    with pytest.raises(QueryPoolTimeoutError) as captured:
+        executor.execute("SELECT 1")
+
+    assert "secret" not in str(captured.value)
+    engine.connect.assert_called_once_with()
+
+
+def test_connection_outage_is_safe_and_not_retried() -> None:
+    engine = MagicMock(spec=Engine)
+    raw_error = OperationalError(
+        "SELECT 1",
+        None,
+        OSError("postgresql://user:secret@internal/db refused"),
+        connection_invalidated=True,
+    )
+    engine.connect.side_effect = raw_error
+    executor = PostgresQueryExecutor(engine, max_rows=5, timeout_ms=100)
+
+    with pytest.raises(QueryDependencyUnavailableError) as captured:
+        executor.execute("SELECT 1")
+
+    assert "secret" not in str(captured.value)
+    engine.connect.assert_called_once_with()
+
+
+def test_read_role_permission_failure_is_sanitized() -> None:
+    class InsufficientPrivilege(Exception):
+        sqlstate = "42501"
+
+    engine, connection, _ = _engine_with_query_result([], [])
+    raw_error = DBAPIError(
+        "SELECT private_column",
+        None,
+        InsufficientPrivilege("permission denied for private table"),
+        False,
+    )
+    connection.exec_driver_sql.side_effect = [None, None, raw_error]
+    executor = PostgresQueryExecutor(engine, max_rows=5, timeout_ms=100)
+
+    with pytest.raises(QueryPermissionError) as captured:
+        executor.execute("SELECT private_column FROM restricted_table")
+
+    assert "private" not in str(captured.value)
+
+
+def test_failed_transaction_context_rolls_back_and_connection_is_released() -> None:
+    engine, connection, _ = _engine_with_query_result([], [])
+    raw_error = SQLAlchemyError("synthetic execution failure")
+    connection.exec_driver_sql.side_effect = [None, None, raw_error]
+    executor = PostgresQueryExecutor(engine, max_rows=5, timeout_ms=100)
+
+    with pytest.raises(QueryExecutionError):
+        executor.execute("SELECT 1")
+
+    transaction_exit = connection.begin.return_value.__exit__
+    connection_exit = engine.connect.return_value.__exit__
+    assert transaction_exit.call_args.args[0] is SQLAlchemyError
+    assert connection_exit.called
+
+
+def test_executor_close_disposes_pool() -> None:
+    engine = MagicMock(spec=Engine)
+    executor = PostgresQueryExecutor(engine, max_rows=5, timeout_ms=100)
+
+    executor.close()
+
+    engine.dispose.assert_called_once_with()
+
+
+def test_executor_recovers_on_later_call_after_database_returns() -> None:
+    engine = MagicMock(spec=Engine)
+    raw_error = OperationalError(
+        "SELECT 1",
+        None,
+        OSError("synthetic connection refused"),
+        connection_invalidated=True,
+    )
+    successful_context = MagicMock()
+    connection = successful_context.__enter__.return_value
+    result = MagicMock()
+    result.keys.return_value = ["value"]
+    result.mappings.return_value.fetchmany.return_value = [{"value": 1}]
+    connection.exec_driver_sql.side_effect = [None, None, result]
+    engine.connect.side_effect = [raw_error, successful_context]
+    executor = PostgresQueryExecutor(engine, max_rows=2, timeout_ms=100)
+
+    with pytest.raises(QueryDependencyUnavailableError):
+        executor.execute("SELECT 1 AS value")
+
+    recovered = executor.execute("SELECT 1 AS value")
+    assert recovered.rows == [{"value": 1}]
+    assert engine.connect.call_count == 2

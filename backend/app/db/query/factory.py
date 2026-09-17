@@ -2,12 +2,11 @@
 
 from functools import lru_cache
 
-from sqlalchemy import create_engine
-
 from app.core.config import Settings, get_settings
 from app.db.query.base import QueryExecutor
 from app.db.query.exceptions import QueryConfigurationError
 from app.db.query.postgres import PostgresQueryExecutor
+from app.db.session import create_database_engine
 
 
 def build_query_executor(settings: Settings) -> PostgresQueryExecutor:
@@ -17,7 +16,7 @@ def build_query_executor(settings: Settings) -> PostgresQueryExecutor:
             "QUERY_DATABASE_URL is required before analytical queries can be executed."
         )
 
-    query_engine = create_engine(str(settings.query_database_url), pool_pre_ping=True)
+    query_engine = create_database_engine(str(settings.query_database_url), settings=settings)
     return PostgresQueryExecutor(
         query_engine,
         max_rows=settings.query_max_rows,

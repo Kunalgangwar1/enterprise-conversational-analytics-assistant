@@ -78,7 +78,7 @@ def test_azure_endpoint_rejects_unsafe_or_invalid_values() -> None:
         normalize_azure_openai_base_url("http://example.openai.azure.com/?key=secret")
 
 
-def test_adapter_configures_official_sdk_timeout_retries_and_v1_base_url(
+def test_adapter_configures_explicit_timeouts_without_nested_sdk_retries(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     sdk_constructor = MagicMock()
@@ -93,12 +93,12 @@ def test_adapter_configures_official_sdk_timeout_retries_and_v1_base_url(
         max_output_tokens=800,
     )
 
-    sdk_constructor.assert_called_once_with(
-        api_key="test-key",
-        base_url="https://example.openai.azure.com/openai/v1/",
-        timeout=12.5,
-        max_retries=4,
-    )
+    kwargs = sdk_constructor.call_args.kwargs
+    assert kwargs["api_key"] == "test-key"
+    assert kwargs["base_url"] == "https://example.openai.azure.com/openai/v1/"
+    assert kwargs["max_retries"] == 0
+    assert kwargs["timeout"].connect == 5
+    assert kwargs["timeout"].read == 12.5
 
 
 def test_text_request_maps_messages_response_usage_and_optional_parameters() -> None:

@@ -20,4 +20,8 @@ def build_session_store(settings: Settings) -> SessionStore:
         key_prefix=settings.session_redis_key_prefix,
         ttl_seconds=settings.session_max_age_seconds,
         max_update_retries=settings.session_redis_max_update_retries,
+        connect_timeout_seconds=settings.redis_connect_timeout_seconds,
+        socket_timeout_seconds=settings.redis_socket_timeout_seconds,
+        pool_timeout_seconds=settings.redis_pool_timeout_seconds,
+        max_connections=settings.redis_max_connections,
     )

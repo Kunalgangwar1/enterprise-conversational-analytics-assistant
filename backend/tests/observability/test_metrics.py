@@ -40,6 +40,9 @@ def test_catalog_contains_required_operational_families() -> None:
         "multihop",
         "forecast",
         "session",
+        "db",
+        "redis",
+        "readiness",
         "auth",
         "security",
     }

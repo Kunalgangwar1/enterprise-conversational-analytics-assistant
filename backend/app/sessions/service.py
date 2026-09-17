@@ -132,6 +132,11 @@ class SessionService:
             except SessionConflictError:
                 metrics.record("session.conflicts", 1, {"operation": operation})
                 metrics.record(
+                    "session.conflict_exhausted",
+                    1,
+                    {"operation": operation},
+                )
+                metrics.record(
                     "session.operation.duration",
                     perf_counter() - started,
                     {"operation": operation, "outcome": "conflict"},
@@ -139,6 +144,7 @@ class SessionService:
                 raise
             except SessionStoreUnavailableError:
                 metrics.record("session.unavailable", 1, {"operation": operation})
+                metrics.record("redis.unavailable", 1, {"operation": "session"})
                 metrics.record(
                     "session.operation.duration",
                     perf_counter() - started,

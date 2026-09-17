@@ -11,8 +11,11 @@ from app.knowledge_catalog.exceptions import (
     EmbeddingConfigurationError,
     EmbeddingProviderError,
     EmbeddingRateLimitError,
+    EmbeddingRequestError,
     EmbeddingTimeoutError,
+    EmbeddingUnavailableError,
 )
+from app.reliability.errors import retry_after_from_exception
 
 
 class GeminiEmbeddingClient:
@@ -26,6 +29,7 @@ class GeminiEmbeddingClient:
         dimensions: int | None,
         timeout_seconds: float = 30,
         max_retries: int = 2,
+        connect_timeout_seconds: float = 5.0,
         sdk_client: Any | None = None,
     ) -> None:
         if not api_key.strip():
@@ -34,15 +38,31 @@ class GeminiEmbeddingClient:
             raise EmbeddingConfigurationError("GEMINI_EMBEDDING_MODEL must not be blank")
         if dimensions is not None and dimensions < 1:
             raise EmbeddingConfigurationError("EMBEDDING_DIMENSIONS must be positive")
+        if timeout_seconds <= 0:
+            raise EmbeddingConfigurationError("LLM_TIMEOUT_SECONDS must be greater than zero")
+        if max_retries < 0:
+            raise EmbeddingConfigurationError("LLM_MAX_RETRIES cannot be negative")
+        if connect_timeout_seconds <= 0 or connect_timeout_seconds > timeout_seconds:
+            raise EmbeddingConfigurationError(
+                "LLM_CONNECT_TIMEOUT_SECONDS must be positive and not exceed the request timeout"
+            )
         self._model = model.strip()
         self._dimensions = dimensions
         self._client = sdk_client or genai.Client(
             api_key=api_key,
             http_options=types.HttpOptions(
                 timeout=int(timeout_seconds * 1_000),
-                retry_options=types.HttpRetryOptions(attempts=max_retries + 1),
+                client_args={
+                    "timeout": httpx.Timeout(timeout_seconds, connect=connect_timeout_seconds)
+                },
+                retry_options=types.HttpRetryOptions(attempts=1),
             ),
         )
+
+    def close(self) -> None:
+        close = getattr(self._client, "close", None)
+        if callable(close):
+            close()
 
     @property
     def provider_name(self) -> str:
@@ -78,7 +98,7 @@ class GeminiEmbeddingClient:
                 contents=texts,
                 config=types.EmbedContentConfig(**config_values),
             )
-        except (errors.APIError, httpx.TimeoutException, TimeoutError) as exc:
+        except (errors.APIError, httpx.TransportError, TimeoutError) as exc:
             _raise_translated_embedding_error(exc)
         embeddings = getattr(response, "embeddings", None)
         vectors = [list(item.values or []) for item in embeddings or []]
@@ -100,11 +120,20 @@ def _supports_retrieval_task_types(model: str) -> bool:
 def _raise_translated_embedding_error(exc: Exception) -> NoReturn:
     if isinstance(exc, (httpx.TimeoutException, TimeoutError)):
         raise EmbeddingTimeoutError("Embedding provider request timed out") from exc
+    if isinstance(exc, httpx.TransportError):
+        raise EmbeddingUnavailableError("Embedding provider is unavailable") from exc
     code = getattr(exc, "code", None)
     if code in {401, 403}:
         raise EmbeddingAuthenticationError("Embedding provider authentication failed") from exc
     if code == 429:
-        raise EmbeddingRateLimitError("Embedding provider rate limit was exceeded") from exc
+        raise EmbeddingRateLimitError(
+            "Embedding provider rate limit was exceeded",
+            retry_after_seconds=retry_after_from_exception(exc),
+        ) from exc
     if code in {408, 504}:
         raise EmbeddingTimeoutError("Embedding provider request timed out") from exc
+    if code in {500, 502, 503}:
+        raise EmbeddingUnavailableError("Embedding provider is unavailable") from exc
+    if isinstance(code, int) and 400 <= code < 500:
+        raise EmbeddingRequestError("Embedding provider rejected the request") from exc
     raise EmbeddingProviderError("Embedding provider request failed") from exc

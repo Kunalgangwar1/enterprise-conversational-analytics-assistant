@@ -20,3 +20,8 @@ class QueryExecutor(Protocol):
     ) -> QueryExecutionResult:
         """Execute one read-only SQL statement with optional bound values and stricter limits."""
         ...
+
+    def close(self) -> None:
+        """Release the executor's database pool."""
+
+        ...
