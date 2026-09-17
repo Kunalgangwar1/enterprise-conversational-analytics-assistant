@@ -28,6 +28,16 @@ module.exports = {
     new HtmlWebpackPlugin({ template: "./public/index.html" }),
     new webpack.DefinePlugin({
       __API_BASE_URL__: JSON.stringify(process.env.API_BASE_URL || ""),
+      __AUTH_MODE__: JSON.stringify(process.env.AUTH_MODE || "development"),
+      __OIDC_AUTHORITY__: JSON.stringify(process.env.OIDC_AUTHORITY || ""),
+      __OIDC_CLIENT_ID__: JSON.stringify(process.env.OIDC_CLIENT_ID || ""),
+      __OIDC_REDIRECT_URI__: JSON.stringify(process.env.OIDC_REDIRECT_URI || ""),
+      __OIDC_POST_LOGOUT_REDIRECT_URI__: JSON.stringify(
+        process.env.OIDC_POST_LOGOUT_REDIRECT_URI || "",
+      ),
+      __OIDC_MANAGED_LOGIN_DOMAIN__: JSON.stringify(
+        process.env.OIDC_MANAGED_LOGIN_DOMAIN || "",
+      ),
     }),
   ],
   devServer: {

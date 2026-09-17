@@ -29,6 +29,7 @@ from app.core.feature_flags import ReasoningFeatureFlags
 from app.llm.base import LLMClient
 from app.llm.exceptions import LLMError
 from app.llm.models import LLMMessage, LLMRequest, LLMRole
+from app.observability.metrics import get_metrics
 from app.routing.models import SupervisorDecision
 from app.security.prompt_boundary import secure_system_prompt, untrusted_content
 
@@ -73,6 +74,7 @@ class AdvancedReasoningNodes:
             ReasoningDecomposition,
         )
         if len(decomposition.subtasks) > self._max_subtasks:
+            get_metrics().record("advanced_reasoning.budget_violations", 1, {"outcome": "denied"})
             raise AdvancedReasoningPlanError("Advanced decomposition exceeds the subtask budget")
         if len({item.task_id for item in decomposition.subtasks}) != len(decomposition.subtasks):
             raise AdvancedReasoningPlanError("Advanced decomposition task IDs must be unique")
@@ -84,6 +86,7 @@ class AdvancedReasoningNodes:
             result.status is not ToolExecutionStatus.SKIPPED for result in completed
         )
         if remaining_calls < 1:
+            get_metrics().record("advanced_reasoning.budget_violations", 1, {"outcome": "denied"})
             raise AdvancedReasoningPlanError("Advanced tool-call budget is exhausted")
         context = {
             "question": state["safe_question"],
@@ -100,6 +103,7 @@ class AdvancedReasoningNodes:
         }
         plan = self._structured(_PLAN_PROMPT, json.dumps(context), ToolPlan)
         if len(plan.steps) > remaining_calls:
+            get_metrics().record("advanced_reasoning.budget_violations", 1, {"outcome": "denied"})
             raise AdvancedReasoningPlanError("Advanced plan exceeds the remaining tool-call budget")
         validate_and_order_plan(
             plan,
@@ -134,6 +138,11 @@ class AdvancedReasoningNodes:
                 result = self._tools.execute(step)
             existing.append(result)
             by_id[result.step_id] = result
+        get_metrics().record(
+            "advanced_reasoning.tool_calls",
+            len(ordered),
+            {"outcome": "success"},
+        )
         return {"tool_results": tuple(existing), "current_step": len(existing)}
 
     def reflect(self, state: AdvancedReasoningState) -> AdvancedReasoningState:
@@ -165,11 +174,14 @@ class AdvancedReasoningNodes:
             result.status is not ToolExecutionStatus.SKIPPED
             for result in state.get("tool_results", ())
         )
-        return bool(
+        should_replan = bool(
             state["reflection_decision"].status is ReflectionStatus.NEEDS_MORE
             and state["reflection_count"] <= self.max_replans
             and attempted_calls < self._max_tool_calls
         )
+        if should_replan:
+            get_metrics().record("advanced_reasoning.replans", 1, {"outcome": "success"})
+        return should_replan
 
     def synthesize(self, state: AdvancedReasoningState) -> AdvancedReasoningState:
         completed = tuple(

@@ -15,6 +15,7 @@ from redis.exceptions import RedisError
 from app.api.errors import APIError
 from app.auth.models import AuthPrincipal
 from app.core.config import Settings
+from app.observability.metrics import get_metrics, route_category
 from app.security.exceptions import RateLimitUnavailableError
 
 _FIXED_WINDOW_SCRIPT = """
@@ -169,12 +170,28 @@ def enforce_rate_limit(request: Request, principal: AuthPrincipal, scope: str) -
     try:
         decision = limiter.check(principal.subject, scope)
     except RateLimitUnavailableError as exc:
+        get_metrics().record(
+            "security.rate_limited_requests",
+            1,
+            {
+                "reason_code": "storage_unavailable",
+                "route_category": route_category(request.url.path),
+            },
+        )
         raise APIError(
             status_code=503,
             code="rate_limit_unavailable",
             message="Request protection is temporarily unavailable.",
         ) from exc
     if not decision.allowed:
+        get_metrics().record(
+            "security.rate_limited_requests",
+            1,
+            {
+                "reason_code": "limit_exceeded",
+                "route_category": route_category(request.url.path),
+            },
+        )
         raise APIError(
             status_code=429,
             code="rate_limit_exceeded",

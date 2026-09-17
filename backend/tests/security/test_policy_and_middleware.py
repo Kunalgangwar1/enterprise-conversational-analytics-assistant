@@ -27,6 +27,7 @@ def _production_settings(tmp_path: Path, **overrides: object) -> Settings:
         "app_env": "production",
         "auth_mode": "oidc",
         "auth_oidc_issuer": "https://issuer.example.invalid",
+        "auth_oidc_audience": "enterprise-analytics-test",
         "auth_oidc_jwks_url": "https://issuer.example.invalid/.well-known/jwks.json",
         "session_cookie_secure": True,
         "cors_allowed_origins": ["https://analytics.example.invalid"],
@@ -129,6 +130,20 @@ def test_trusted_and_untrusted_host_headers(tmp_path: Path) -> None:
 
     assert accepted.status_code == 200
     assert rejected.status_code == 400
+
+
+def test_private_ip_host_is_allowed_only_for_get_health_probe(tmp_path: Path) -> None:
+    settings = _settings(tmp_path, allowed_hosts=["trusted.example.invalid"])
+    private_host = {"Host": "10.42.4.19:8000"}
+    with TestClient(create_app(settings)) as client:
+        health = client.get("/api/health", headers=private_host)
+        non_health = client.get("/api/auth/me", headers=private_host)
+        external_ip = client.get("/api/health", headers={"Host": "203.0.113.10:8000"})
+
+    assert health.status_code == 200
+    assert health.json() == {"status": "ok"}
+    assert non_health.status_code == 400
+    assert external_ip.status_code == 400
 
 
 def test_security_headers_are_present_and_hsts_is_off_locally(tmp_path: Path) -> None:

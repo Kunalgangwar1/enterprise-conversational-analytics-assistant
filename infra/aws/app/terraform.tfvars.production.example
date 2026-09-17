@@ -1,0 +1,22 @@
+aws_region                  = "ap-south-1"
+environment                 = "prod"
+ecs_egress_mode             = "private"
+backend_ecr_repository_name = "enterprise-conversational-analytics-backend"
+backend_image_tag           = "sha-0000000000000000000000000000000000000000"
+
+# Illustrative stronger posture, not benchmarked production sizing.
+ecs_cpu                       = 512
+ecs_memory                    = 1024
+ecs_desired_count             = 1
+database_instance_class       = "db.t4g.small"
+database_multi_az             = true
+database_deletion_protection  = true
+database_skip_final_snapshot  = false
+frontend_force_destroy        = false
+
+# Initial production-oriented visibility; thresholds still require workload-specific tuning.
+observability_enabled         = true
+enable_container_insights     = true
+enable_operational_alarms     = true
+enable_alarm_notifications    = false
+otel_trace_sample_ratio       = 0.10

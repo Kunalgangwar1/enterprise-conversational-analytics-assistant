@@ -254,3 +254,12 @@ th { background: #edf2f5; color: #334d5f; }
   color: var(--muted-text, #64748b);
   text-transform: capitalize;
 }
+
+.user-control button {
+  align-self: flex-end;
+  background: transparent;
+  border: 0;
+  color: #d7e4ec;
+  padding: 2px 0;
+  text-decoration: underline;
+}

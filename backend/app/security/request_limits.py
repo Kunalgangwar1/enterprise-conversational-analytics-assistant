@@ -6,6 +6,8 @@ from typing import Annotated, Any
 
 from pydantic import AfterValidator, StringConstraints
 
+from app.observability.metrics import get_metrics, route_category
+
 CHAT_MESSAGE_MAX_CHARS = 4_000
 CUSTOM_CONTEXT_MAX_CHARS = 8_000
 SPECIALIST_QUERY_MAX_CHARS = 4_000
@@ -58,6 +60,14 @@ class RequestBodyLimitMiddleware:
                 return
             chunk = message.get("body", b"")
             if len(body) + len(chunk) > self.max_body_bytes:
+                get_metrics().record(
+                    "security.request_too_large",
+                    1,
+                    {
+                        "reason_code": "body_too_large",
+                        "route_category": route_category(scope.get("path", "")),
+                    },
+                )
                 await self._reject(send)
                 return
             body.extend(chunk)

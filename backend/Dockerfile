@@ -29,6 +29,9 @@ RUN groupadd --system --gid 10001 eca \
 
 WORKDIR /app/backend
 
+# Official AWS bundle enables verify-full TLS for RDS PostgreSQL connections.
+ADD --chmod=0444 https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem /etc/ssl/certs/aws-rds-global-bundle.pem
+
 COPY --from=builder --chown=eca:eca /app/backend/.venv ./.venv
 COPY --chown=eca:eca app ./app
 COPY --chown=eca:eca config ./config

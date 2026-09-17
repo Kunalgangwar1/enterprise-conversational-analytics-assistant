@@ -4,6 +4,7 @@ import { HashRouter } from "react-router-dom";
 
 import App from "../App";
 import type { AuthPrincipal, Permission } from "../api/types";
+import * as oidc from "../auth/oidc";
 
 function response(body: unknown, status = 200): Response {
   return { ok: status >= 200 && status < 300, status, json: async () => body } as Response;
@@ -109,6 +110,7 @@ function renderApp() {
 
 describe("authentication and permission-aware UI", () => {
   beforeEach(() => {
+    (globalThis as typeof globalThis & { __AUTH_MODE__: string }).__AUTH_MODE__ = "development";
     sessionStorage.clear();
     localStorage.clear();
     jest.restoreAllMocks();
@@ -189,5 +191,37 @@ describe("authentication and permission-aware UI", () => {
     expect(sessionStorage.getItem("refresh_token")).toBeNull();
     expect(Array.from({ length: sessionStorage.length }, (_, index) => sessionStorage.key(index)))
       .toEqual(["eca_tab_id"]);
+  });
+
+  test("OIDC mode offers a login redirect after a 401", async () => {
+    (globalThis as typeof globalThis & { __AUTH_MODE__: string }).__AUTH_MODE__ = "oidc";
+    jest.spyOn(oidc, "initializeOidcAuthentication").mockResolvedValue();
+    const login = jest.spyOn(oidc, "beginOidcLogin").mockResolvedValue();
+    jest.spyOn(globalThis, "fetch").mockResolvedValue(
+      response({ error: { code: "authentication_required", message: "Authentication is required." } }, 401),
+    );
+    const user = userEvent.setup();
+
+    renderApp();
+    await user.click(await screen.findByRole("button", { name: "Sign in" }));
+
+    expect(login).toHaveBeenCalledTimes(1);
+  });
+
+  test("OIDC logout clears in-memory authentication and starts provider logout", async () => {
+    (globalThis as typeof globalThis & { __AUTH_MODE__: string }).__AUTH_MODE__ = "oidc";
+    jest.spyOn(oidc, "initializeOidcAuthentication").mockResolvedValue();
+    jest.spyOn(oidc, "getOidcAccessToken").mockReturnValue("synthetic-access-token");
+    const logout = jest.spyOn(oidc, "logoutFromOidc").mockResolvedValue();
+    installAuthenticatedFetch(identity("analyst", analystPermissions));
+    const user = userEvent.setup();
+
+    renderApp();
+    await user.click(await screen.findByRole("button", { name: "Sign out" }));
+
+    expect(logout).toHaveBeenCalledTimes(1);
+    expect(localStorage.length).toBe(0);
+    expect(sessionStorage.getItem("access_token")).toBeNull();
+    expect(sessionStorage.getItem("refresh_token")).toBeNull();
   });
 });

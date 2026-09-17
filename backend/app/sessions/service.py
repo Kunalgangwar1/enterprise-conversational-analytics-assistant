@@ -3,8 +3,13 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from time import perf_counter
+from typing import TypeVar
 
 from app.core.chat_modes import ChatModeConfig, ChatModeRegistry
+from app.observability.metrics import get_metrics
+from app.observability.tracing import start_span
+from app.sessions.exceptions import SessionConflictError, SessionStoreUnavailableError
 from app.sessions.identity import SessionIdentity
 from app.sessions.models import ChatMessage, ChatRole, SessionState, utc_now
 from app.sessions.store import SessionStore
@@ -35,10 +40,10 @@ class SessionService:
     def get_or_create(self, identity: SessionIdentity) -> SessionState:
         """Load current state or create an unpersisted default state."""
 
-        state = self._store.load(identity)
-        if state is not None:
-            return state
-        return self._new_state(identity)
+        return self._observe(
+            "load",
+            lambda: self._store.load(identity) or self._new_state(identity),
+        )
 
     def _new_state(self, identity: SessionIdentity) -> SessionState:
         now = self._clock()
@@ -64,7 +69,7 @@ class SessionService:
                 }
             )
 
-        updated = self._store.update(identity, mutate)
+        updated = self._observe("select_mode", lambda: self._store.update(identity, mutate))
         return ModeSelection(state=updated, mode=mode)
 
     def reset(self, identity: SessionIdentity) -> SessionState:
@@ -82,7 +87,7 @@ class SessionService:
                 }
             )
 
-        return self._store.update(identity, mutate)
+        return self._observe("reset", lambda: self._store.update(identity, mutate))
 
     def complete_turn(
         self,
@@ -112,4 +117,41 @@ class SessionService:
                 }
             )
 
-        return self._store.update(identity, mutate)
+        return self._observe("complete_turn", lambda: self._store.update(identity, mutate))
+
+    def _observe(self, operation: str, action: Callable[[], "_ResultT"]) -> "_ResultT":
+        started = perf_counter()
+        metrics = get_metrics()
+        span_name = "session.load" if operation == "load" else "session.update"
+        with start_span(
+            span_name,
+            {"session.operation": operation},
+        ) as span:
+            try:
+                result = action()
+            except SessionConflictError:
+                metrics.record("session.conflicts", 1, {"operation": operation})
+                metrics.record(
+                    "session.operation.duration",
+                    perf_counter() - started,
+                    {"operation": operation, "outcome": "conflict"},
+                )
+                raise
+            except SessionStoreUnavailableError:
+                metrics.record("session.unavailable", 1, {"operation": operation})
+                metrics.record(
+                    "session.operation.duration",
+                    perf_counter() - started,
+                    {"operation": operation, "outcome": "unavailable"},
+                )
+                raise
+            metrics.record(
+                "session.operation.duration",
+                perf_counter() - started,
+                {"operation": operation, "outcome": "success"},
+            )
+            span.set_attribute("outcome", "success")
+            return result
+
+
+_ResultT = TypeVar("_ResultT")

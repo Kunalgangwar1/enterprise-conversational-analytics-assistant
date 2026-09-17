@@ -139,3 +139,92 @@ def test_expected_token_use_is_enforced(signing_keys) -> None:
     backend = _backend(public, auth_oidc_token_use="access")
     with pytest.raises(AuthenticationError):
         backend.authenticate(_token(private, claims=_claims(token_use="id")))
+
+
+def test_valid_cognito_access_token_uses_client_id_and_group_mapping(signing_keys) -> None:
+    private, public = signing_keys
+    claims = _claims(
+        aud=None,
+        client_id="cognito-spa-client",
+        token_use="access",
+        roles=[],
+        **{"cognito:groups": ["analyst", "unknown-group"]},
+    )
+    claims.pop("aud")
+
+    principal = _backend(
+        public,
+        auth_oidc_audience=None,
+        auth_oidc_client_id="cognito-spa-client",
+        auth_oidc_client_id_claim="client_id",
+        auth_oidc_token_use="access",
+        auth_oidc_groups_claim="cognito:groups",
+        auth_group_role_mapping={"viewer": "viewer", "analyst": "analyst", "admin": "admin"},
+    ).authenticate(_token(private, claims=claims))
+
+    assert principal.roles == (AppRole.ANALYST,)
+    assert principal.groups == ("analyst", "unknown-group")
+    assert Permission.SQL_EXECUTE in principal.permissions
+
+
+@pytest.mark.parametrize(
+    ("claim_overrides", "settings_overrides"),
+    [
+        ({"client_id": "wrong-client"}, {}),
+        ({"token_use": "id"}, {}),
+        ({"iss": "https://wrong.example.invalid"}, {}),
+    ],
+    ids=["wrong-client-id", "wrong-token-use", "wrong-issuer"],
+)
+def test_invalid_cognito_access_token_claims_are_rejected(
+    signing_keys,
+    claim_overrides,
+    settings_overrides,
+) -> None:
+    private, public = signing_keys
+    claims = _claims(
+        aud=None,
+        client_id="cognito-spa-client",
+        token_use="access",
+        **{"cognito:groups": ["viewer"]},
+    )
+    claims.pop("aud")
+    claims.update(claim_overrides)
+    backend = _backend(
+        public,
+        auth_oidc_audience=None,
+        auth_oidc_client_id="cognito-spa-client",
+        auth_oidc_client_id_claim="client_id",
+        auth_oidc_token_use="access",
+        auth_oidc_groups_claim="cognito:groups",
+        auth_group_role_mapping={"viewer": "viewer"},
+        **settings_overrides,
+    )
+
+    with pytest.raises(AuthenticationError):
+        backend.authenticate(_token(private, claims=claims))
+
+
+def test_cognito_token_with_only_unknown_group_grants_no_role(signing_keys) -> None:
+    private, public = signing_keys
+    claims = _claims(
+        aud=None,
+        client_id="cognito-spa-client",
+        token_use="access",
+        roles=[],
+        **{"cognito:groups": ["unmapped-group"]},
+    )
+    claims.pop("aud")
+
+    principal = _backend(
+        public,
+        auth_oidc_audience=None,
+        auth_oidc_client_id="cognito-spa-client",
+        auth_oidc_client_id_claim="client_id",
+        auth_oidc_token_use="access",
+        auth_oidc_groups_claim="cognito:groups",
+        auth_group_role_mapping={"viewer": "viewer", "analyst": "analyst", "admin": "admin"},
+    ).authenticate(_token(private, claims=claims))
+
+    assert principal.roles == ()
+    assert principal.permissions == frozenset()

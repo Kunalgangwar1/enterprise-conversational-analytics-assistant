@@ -1,0 +1,10 @@
+aws_region               = "ap-south-1"
+environment              = "dev"
+state_bucket_name        = "replace-with-a-globally-unique-terraform-state-bucket"
+ecr_repository_name      = "enterprise-conversational-analytics-backend"
+enable_github_oidc       = false
+# Set these only after a real GitHub repository exists.
+# github_repository = "owner/repository"
+# Repositories created/transferred after 2026-07-15 use "owner@OWNER_ID/repository@REPO_ID".
+# github_trusted_environments = ["dev", "staging", "prod"]
+# github_trusted_ref = "refs/heads/main"

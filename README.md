@@ -5,13 +5,16 @@ analytics system. It uses synthetic healthcare examples only. Proprietary code, 
 patient/member data, and credentials must never be committed.
 
 `ARCHITECTURE_REPO_RUNBOOK.md` is the primary reference for the intended system. The implementation
-is complete through Phase 25. Phase 18 connects specialist workflows through a thin chat
+is complete through Phase 27A. Phase 18 connects specialist workflows through a thin chat
 orchestrator and React One UI, Phase 19 adds the deterministic AI Dashboard, and Phase 20 adds a
 sidecar evaluation/regression harness. Phase 21 adds provider-neutral authentication, explicit
 RBAC, subject-owned sessions, and deterministic self-access inspection. Phases 22-23 add shared
 Redis state and security hardening; Phase 24 adds production-capable images and a local Compose
 integration stack. Phase 25 adds cloud-independent GitHub Actions quality gates and versioned GHCR
-artifact delivery without deploying to AWS.
+artifact delivery. Phase 26 adds a Terraform-managed AWS pre-deployment architecture without
+creating live resources automatically. Phase 27A adds structured logs, request correlation,
+provider-neutral OpenTelemetry metrics/traces, a local collector overlay, and conditional AWS ADOT,
+CloudWatch, and X-Ray infrastructure; live Phase 27B validation awaits AWS deployment.
 
 ## Repository layout
 
@@ -111,6 +114,21 @@ has a weekly/manual compatibility workflow. Semantic version tags publish separa
 frontend images to GHCR using the automatic least-privilege `GITHUB_TOKEN`. Normal CI requires no
 application or cloud secrets and never runs live LLM evaluation or AWS deployment. See
 [`docs/ci-cd.md`](docs/ci-cd.md).
+
+## AWS deployment
+
+Phase 26 provides review-first Terraform for CloudFront, private S3, an internal-ALB VPC origin,
+ECS Fargate, private RDS PostgreSQL, TLS Valkey, Cognito PKCE login, Secrets Manager, ECR, and GitHub
+OIDC deployment. It is cost-bearing infrastructure: no apply or live deployment is performed by the
+repository itself. See [`docs/aws-deployment.md`](docs/aws-deployment.md).
+
+## Observability
+
+Phase 27A provides privacy-safe JSON logging, bounded request correlation, manual OpenTelemetry
+metrics/traces at central boundaries, an optional local Collector Contrib overlay, and conditional
+ADOT/CloudWatch/X-Ray Terraform. Observability is disabled by default and never required for normal
+tests. See [`docs/observability.md`](docs/observability.md) and
+[`ADR-027`](docs/decisions/ADR-027-observability.md).
 
 ## Database setup
 

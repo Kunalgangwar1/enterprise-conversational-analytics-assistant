@@ -41,7 +41,7 @@ function errorMessage(error: unknown): string {
 }
 
 export function ChatPage() {
-  const { principal, hasPermission } = useAuth();
+  const { principal, hasPermission, logout } = useAuth();
   const [selectedMode, setSelectedMode] = useState<ChatMode>("auto");
   const [sqlStrategy, setSqlStrategy] = useState<SqlStrategy>("auto");
   const [uiFlags, setUiFlags] = useState(EMPTY_UI_FLAGS);
@@ -103,6 +103,7 @@ export function ChatPage() {
         <div className="user-control" aria-label="Current user">
           <strong>{principal.display_name ?? principal.subject}</strong>
           <span>{principal.roles.join(", ") || "No application role"}</span>
+          <button type="button" onClick={() => void logout()}>Sign out</button>
         </div>
       </header>
       <div className="app-body">

@@ -1,6 +1,11 @@
 import type { ApiErrorEnvelope } from "./types";
 
 const TAB_ID_KEY = "eca_tab_id";
+let accessTokenProvider: () => string | undefined = () => undefined;
+
+export function setAccessTokenProvider(provider: () => string | undefined): void {
+  accessTokenProvider = provider;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -35,6 +40,7 @@ export async function apiRequest<T>(
   signal?: AbortSignal,
 ): Promise<T> {
   let response: Response;
+  const accessToken = accessTokenProvider();
   try {
     response = await fetch(`${__API_BASE_URL__}${path}`, {
       ...init,
@@ -45,6 +51,7 @@ export async function apiRequest<T>(
         "Content-Type": "application/json",
         "X-Tab-Id": getTabId(),
         ...init.headers,
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
     });
   } catch (error) {

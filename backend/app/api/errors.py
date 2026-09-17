@@ -1,11 +1,14 @@
 """Small shared error envelope for application-level API failures."""
 
+import logging
 from collections.abc import Mapping
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 class APIErrorDetail(BaseModel):
@@ -46,6 +49,10 @@ class APIError(Exception):
 async def api_error_handler(_request: Request, exc: APIError) -> JSONResponse:
     """Render an APIError without exposing internal exception details."""
 
+    logger.info(
+        "Controlled API error",
+        extra={"error_code": exc.code, "outcome": "error"},
+    )
     response = APIErrorResponse(error=APIErrorDetail(code=exc.code, message=exc.message))
     return JSONResponse(
         status_code=exc.status_code,
@@ -60,6 +67,10 @@ async def request_validation_error_handler(
 ) -> JSONResponse:
     """Reject invalid input without reflecting raw user-controlled values."""
 
+    logger.info(
+        "Request validation rejected",
+        extra={"error_code": "invalid_request", "outcome": "error"},
+    )
     response = APIErrorResponse(
         error=APIErrorDetail(
             code="invalid_request",

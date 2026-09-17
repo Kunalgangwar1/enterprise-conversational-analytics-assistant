@@ -10,6 +10,14 @@ class ResizeObserverMock {
 globalThis.ResizeObserver = ResizeObserverMock;
 Element.prototype.scrollIntoView = jest.fn();
 (globalThis as typeof globalThis & { __API_BASE_URL__: string }).__API_BASE_URL__ = "";
+(globalThis as typeof globalThis & { __AUTH_MODE__: string }).__AUTH_MODE__ = "development";
+(globalThis as typeof globalThis & { __OIDC_AUTHORITY__: string }).__OIDC_AUTHORITY__ = "";
+(globalThis as typeof globalThis & { __OIDC_CLIENT_ID__: string }).__OIDC_CLIENT_ID__ = "";
+(globalThis as typeof globalThis & { __OIDC_REDIRECT_URI__: string }).__OIDC_REDIRECT_URI__ = "";
+(globalThis as typeof globalThis & { __OIDC_POST_LOGOUT_REDIRECT_URI__: string })
+  .__OIDC_POST_LOGOUT_REDIRECT_URI__ = "";
+(globalThis as typeof globalThis & { __OIDC_MANAGED_LOGIN_DOMAIN__: string })
+  .__OIDC_MANAGED_LOGIN_DOMAIN__ = "";
 
 Object.defineProperty(globalThis, "fetch", {
   configurable: true,

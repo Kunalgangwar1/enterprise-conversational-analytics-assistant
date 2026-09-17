@@ -9,6 +9,7 @@ from app.api.errors import APIError
 from app.auth.exceptions import AuthenticationError, PermissionDeniedError
 from app.auth.models import AuthPrincipal
 from app.auth.permissions import Permission
+from app.observability.metrics import get_metrics, route_category
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -22,6 +23,14 @@ def get_current_principal(
     try:
         return backend.authenticate(token)
     except AuthenticationError as exc:
+        get_metrics().record(
+            "auth.authentication_failures",
+            1,
+            {
+                "reason_code": "missing_token" if credentials is None else "invalid_token",
+                "route_category": route_category(request.url.path),
+            },
+        )
         raise APIError(
             status_code=401,
             code="authentication_required",
@@ -43,6 +52,14 @@ def require_permission(permission: Permission):
         try:
             request.app.state.authorization_service.require_permission(principal, permission)
         except PermissionDeniedError as exc:
+            get_metrics().record(
+                "auth.authorization_denials",
+                1,
+                {
+                    "reason_code": "permission_denied",
+                    "route_category": route_category(request.url.path),
+                },
+            )
             raise APIError(
                 status_code=403,
                 code="permission_denied",

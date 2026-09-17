@@ -1,0 +1,28 @@
+aws_region                  = "ap-south-1"
+environment                 = "dev"
+ecs_egress_mode             = "cost_optimized"
+backend_ecr_repository_name = "enterprise-conversational-analytics-backend"
+backend_image_tag           = "sha-0000000000000000000000000000000000000000"
+
+# Cost-aware learning defaults. Review before every plan.
+ecs_cpu                     = 512
+ecs_memory                  = 1024
+ecs_desired_count           = 1
+database_instance_class     = "db.t4g.micro"
+database_multi_az           = false
+database_deletion_protection = false
+database_skip_final_snapshot = true
+cache_node_type             = "cache.t4g.micro"
+frontend_force_destroy      = false
+
+# Cost-aware observability defaults: enable explicitly after reviewing CloudWatch/X-Ray charges.
+observability_enabled       = false
+enable_container_insights   = false
+enable_operational_alarms   = false
+enable_alarm_notifications  = false
+otel_trace_sample_ratio     = 0.10
+
+# Optional: ARN of an existing Secrets Manager secret containing only the Gemini API key.
+# gemini_secret_arn = "arn:aws:secretsmanager:REGION:ACCOUNT:secret:NAME"
+# If that secret uses a customer-managed KMS key, also set:
+# gemini_secret_kms_key_arn = "arn:aws:kms:REGION:ACCOUNT:key/KEY-ID"

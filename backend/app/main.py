@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.errors import register_api_error_handlers
 from app.api.router import api_router
@@ -18,9 +17,12 @@ from app.dashboards.service import DashboardService
 from app.data_discovery.search import DataDiscoveryService
 from app.data_quality.agent import DataQualityAgent
 from app.knowledge_catalog.agent import KnowledgeCatalogAgent
+from app.observability import initialize_observability
+from app.observability.middleware import ObservabilityMiddleware
 from app.security.headers import SecurityHeadersMiddleware
 from app.security.rate_limit import RateLimiter, build_rate_limiter
 from app.security.request_limits import RequestBodyLimitMiddleware
+from app.security.trusted_host import HealthProbeTrustedHostMiddleware
 from app.semantica.agent import SemanticaAgent
 from app.sessions.factory import build_session_store
 from app.sessions.service import SessionService
@@ -45,6 +47,7 @@ def create_app(
     resolved_settings = settings or get_settings()
     resolved_session_store = session_store or build_session_store(resolved_settings)
     resolved_rate_limiter = rate_limiter or build_rate_limiter(resolved_settings)
+    observability = initialize_observability(resolved_settings)
 
     @asynccontextmanager
     async def lifespan(_application: FastAPI) -> AsyncIterator[None]:
@@ -53,6 +56,7 @@ def create_app(
         finally:
             resolved_rate_limiter.close()
             resolved_session_store.close()
+            observability.shutdown()
 
     application = FastAPI(
         title=resolved_settings.app_name,
@@ -63,6 +67,7 @@ def create_app(
         openapi_url="/openapi.json" if resolved_settings.api_docs_enabled else None,
     )
     application.state.settings = resolved_settings
+    application.state.observability = observability
     authorization_service = AuthorizationService()
     application.state.authorization_service = authorization_service
     application.state.authentication_backend = (
@@ -97,10 +102,10 @@ def create_app(
             "Content-Type",
             resolved_settings.tab_id_header,
         ],
-        expose_headers=["Retry-After"],
+        expose_headers=["Retry-After", "X-Request-Id"],
     )
     application.add_middleware(
-        TrustedHostMiddleware,
+        HealthProbeTrustedHostMiddleware,
         allowed_hosts=resolved_settings.allowed_hosts,
     )
     application.add_middleware(
@@ -113,6 +118,7 @@ def create_app(
         hsts_enabled=resolved_settings.hsts_enabled,
         hsts_max_age_seconds=resolved_settings.hsts_max_age_seconds,
     )
+    application.add_middleware(ObservabilityMiddleware, runtime=observability)
     return application
 
 

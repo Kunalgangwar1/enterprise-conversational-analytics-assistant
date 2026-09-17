@@ -1,4 +1,4 @@
-import { apiRequest, getTabId } from "../api/client";
+import { apiRequest, getTabId, setAccessTokenProvider } from "../api/client";
 import { executeSql } from "../api/chat";
 
 function response(body: unknown, status = 200): Response {
@@ -12,6 +12,7 @@ function response(body: unknown, status = 200): Response {
 describe("typed API client", () => {
   beforeEach(() => {
     sessionStorage.clear();
+    setAccessTokenProvider(() => undefined);
     jest.restoreAllMocks();
   });
 
@@ -35,6 +36,25 @@ describe("typed API client", () => {
         headers: expect.objectContaining({ "X-Tab-Id": "tab-browser-1" }),
       }),
     );
+  });
+
+  test("centrally attaches an in-memory OIDC access token", async () => {
+    setAccessTokenProvider(() => "synthetic-access-token");
+    const fetchMock = jest.spyOn(globalThis, "fetch").mockResolvedValue(response({ ok: true }));
+
+    await apiRequest<{ ok: boolean }>("/api/auth/me");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/auth/me",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer synthetic-access-token",
+        }),
+      }),
+    );
+    expect(localStorage.length).toBe(0);
+    expect(sessionStorage.getItem("access_token")).toBeNull();
+    expect(sessionStorage.getItem("refresh_token")).toBeNull();
   });
 
   test("Run Query sends no browser-provided SQL", async () => {

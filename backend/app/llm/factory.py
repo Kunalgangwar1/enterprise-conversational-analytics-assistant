@@ -7,6 +7,7 @@ from app.llm.azure_openai import AzureOpenAILLMClient
 from app.llm.base import LLMClient
 from app.llm.exceptions import LLMConfigurationError
 from app.llm.gemini import GeminiLLMClient
+from app.observability.llm import InstrumentedLLMClient
 
 
 @lru_cache(maxsize=1)
@@ -28,13 +29,20 @@ def create_llm_client(settings: Settings) -> LLMClient:
         )
         if not key.strip():
             raise LLMConfigurationError("Missing required Gemini setting: GEMINI_API_KEY")
-        return GeminiLLMClient(
+        client = GeminiLLMClient(
             api_key=key,
             model=settings.gemini_llm_model,
             timeout_seconds=settings.llm_timeout_seconds,
             max_retries=settings.llm_max_retries,
             max_output_tokens=settings.llm_max_output_tokens,
         )
+        if settings.observability_enabled:
+            return InstrumentedLLMClient(
+                client,
+                provider="gemini",
+                model=settings.gemini_llm_model,
+            )
+        return client
     if provider != "azure_openai":
         raise LLMConfigurationError(f"Unsupported LLM provider: {settings.llm_provider}")
 
@@ -55,7 +63,7 @@ def create_llm_client(settings: Settings) -> LLMClient:
             "Missing required Azure OpenAI settings: " + ", ".join(missing_settings)
         )
 
-    return AzureOpenAILLMClient(
+    client = AzureOpenAILLMClient(
         endpoint=settings.azure_openai_endpoint,
         api_key=api_key,
         deployment=settings.azure_openai_deployment,
@@ -63,3 +71,10 @@ def create_llm_client(settings: Settings) -> LLMClient:
         max_retries=settings.llm_max_retries,
         max_output_tokens=settings.llm_max_output_tokens,
     )
+    if settings.observability_enabled:
+        return InstrumentedLLMClient(
+            client,
+            provider="azure_openai",
+            model=settings.azure_openai_deployment,
+        )
+    return client

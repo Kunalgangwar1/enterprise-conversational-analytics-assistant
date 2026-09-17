@@ -1,0 +1,25 @@
+services:
+  backend:
+    environment:
+      OBSERVABILITY_ENABLED: "true"
+      LOG_FORMAT: json
+      SERVICE_NAME: enterprise-conversational-analytics-backend
+      SERVICE_VERSION: local
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_TRACE_SAMPLE_RATIO: "1.0"
+      OTEL_EXPORT_TIMEOUT_SECONDS: "3"
+      METRICS_ENABLED: "true"
+      TRACING_ENABLED: "true"
+    depends_on:
+      otel-collector:
+        condition: service_started
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.156.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    restart: "on-failure:3"
+    volumes:
+      - ./observability/otel-collector-local.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "${OTEL_COLLECTOR_PORT:-4318}:4318"

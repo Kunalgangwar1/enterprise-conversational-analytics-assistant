@@ -3,6 +3,7 @@
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Self
+from urllib.parse import urlsplit
 
 from pydantic import Field, PostgresDsn, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -31,6 +32,8 @@ class Settings(BaseSettings):
     auth_dev_roles: str = "analyst"
     auth_oidc_issuer: str | None = None
     auth_oidc_audience: str | None = None
+    auth_oidc_client_id: str | None = None
+    auth_oidc_client_id_claim: str = Field(default="aud", min_length=1, max_length=128)
     auth_oidc_jwks_url: str | None = None
     auth_oidc_algorithms: str = "RS256"
     auth_oidc_roles_claim: str = "roles"
@@ -45,6 +48,21 @@ class Settings(BaseSettings):
     app_host: str = "127.0.0.1"
     app_port: int = Field(default=8000, ge=1, le=65_535)
     log_level: str = "INFO"
+    log_format: Literal["json", "console"] = "console"
+    observability_enabled: bool = False
+    service_name: str = Field(
+        default="enterprise-conversational-analytics-backend",
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9._-]+$",
+    )
+    service_version: str = Field(default="0.1.0", min_length=1, max_length=64)
+    otel_exporter_otlp_endpoint: str | None = None
+    otel_exporter_otlp_protocol: Literal["http/protobuf"] = "http/protobuf"
+    otel_trace_sample_ratio: float = Field(default=0.10, ge=0, le=1)
+    otel_export_timeout_seconds: float = Field(default=5.0, gt=0, le=30)
+    metrics_enabled: bool = True
+    tracing_enabled: bool = True
     cors_allowed_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"]
     )
@@ -169,6 +187,27 @@ class Settings(BaseSettings):
             raise ValueError("security allowlists cannot contain blank values")
         return normalized
 
+    @field_validator("otel_exporter_otlp_endpoint")
+    @classmethod
+    def validate_otlp_endpoint(cls, value: str | None) -> str | None:
+        """Accept only bounded HTTP(S) collector base URLs without embedded credentials."""
+
+        if value is None or not value.strip():
+            return None
+        normalized = value.strip().rstrip("/")
+        parsed = urlsplit(normalized)
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+            or len(normalized) > 512
+        ):
+            raise ValueError("OTEL_EXPORTER_OTLP_ENDPOINT must be a safe HTTP(S) base URL")
+        return normalized
+
     @model_validator(mode="after")
     def validate_knowledge_chunk_settings(self) -> Self:
         """Ensure deterministic chunk overlap cannot consume a whole chunk."""
@@ -228,6 +267,8 @@ class Settings(BaseSettings):
                 }.items()
                 if not value
             ]
+            if self.auth_oidc_audience is None and self.auth_oidc_client_id is None:
+                missing.append("AUTH_OIDC_AUDIENCE or AUTH_OIDC_CLIENT_ID")
             if missing:
                 raise ValueError(f"OIDC authentication requires: {', '.join(missing)}")
         return self

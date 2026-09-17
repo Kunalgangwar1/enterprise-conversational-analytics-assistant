@@ -57,10 +57,23 @@ class OIDCAuthenticationBackend:
                     "verify_aud": self._settings.auth_oidc_audience is not None,
                 },
             )
+            self._validate_client_id(claims)
             principal = self._principal_from_claims(claims)
         except (PyJWTError, ValueError, TypeError, KeyError) as exc:
             raise AuthenticationError("Bearer token validation failed") from exc
         return self._authorization.enrich(principal)
+
+    def _validate_client_id(self, claims: Mapping[str, Any]) -> None:
+        """Validate a provider-specific client identifier without disabling JWT audience checks."""
+
+        expected_client_id = self._settings.auth_oidc_client_id
+        if expected_client_id is None:
+            return
+        claim_name = self._settings.auth_oidc_client_id_claim
+        claim_value = claims.get(claim_name)
+        values = _string_values(claim_value)
+        if expected_client_id not in values:
+            raise AuthenticationError("Bearer token has an unexpected client identifier")
 
     def _principal_from_claims(self, claims: Mapping[str, Any]) -> AuthPrincipal:
         expected_token_use = self._settings.auth_oidc_token_use

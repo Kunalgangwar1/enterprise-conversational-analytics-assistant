@@ -1,0 +1,226 @@
+name: Deploy AWS
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub environment and Terraform environment name
+        required: true
+        default: dev
+        type: choice
+        options: [dev, staging, prod]
+      apply:
+        description: Apply the reviewed plan and deploy (false performs plan only)
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: aws-deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  TF_IN_AUTOMATION: "true"
+  TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+  TF_VAR_environment: ${{ inputs.environment }}
+  TF_VAR_backend_ecr_repository_name: ${{ vars.AWS_BACKEND_ECR_REPOSITORY }}
+  TF_VAR_backend_image_tag: sha-${{ github.sha }}
+
+jobs:
+  deploy:
+    name: Plan or Deploy AWS
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Validate required repository variables
+        shell: bash
+        env:
+          AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          AWS_BACKEND_ECR_REPOSITORY: ${{ vars.AWS_BACKEND_ECR_REPOSITORY }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          TF_STATE_KEY: ${{ vars.TF_STATE_KEY }}
+        run: |
+          for variable_name in AWS_REGION AWS_DEPLOY_ROLE_ARN AWS_BACKEND_ECR_REPOSITORY TF_STATE_BUCKET TF_STATE_KEY; do
+            if [[ -z "${!variable_name:-}" ]]; then
+              echo "Required GitHub variable is unset: ${variable_name}" >&2
+              exit 1
+            fi
+          done
+
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Configure short-lived AWS credentials
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: 1.11.4
+
+      - name: Initialize application state
+        working-directory: infra/aws/app
+        run: >-
+          terraform init
+          -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          -backend-config="key=${{ vars.TF_STATE_KEY }}"
+          -backend-config="region=${{ env.AWS_REGION }}"
+          -backend-config="encrypt=true"
+          -backend-config="use_lockfile=true"
+
+      - name: Validate Terraform
+        working-directory: infra/aws/app
+        run: terraform validate
+
+      - name: Create saved deployment plan
+        working-directory: infra/aws/app
+        run: terraform plan -input=false -out="$RUNNER_TEMP/app.tfplan"
+
+      - name: Log in to Amazon ECR
+        if: inputs.apply
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2
+
+      - name: Set up Docker Buildx
+        if: inputs.apply
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Resolve backend image URI
+        if: inputs.apply
+        id: backend-image
+        shell: bash
+        run: |
+          repository_uri="$(aws ecr describe-repositories \
+            --repository-names "$TF_VAR_backend_ecr_repository_name" \
+            --query 'repositories[0].repositoryUri' \
+            --output text)"
+          echo "uri=${repository_uri}:${TF_VAR_backend_image_tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push immutable backend image
+        if: inputs.apply
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.backend-image.outputs.uri }}
+          cache-from: type=gha,scope=aws-backend
+          cache-to: type=gha,mode=max,scope=aws-backend
+
+      - name: Apply reviewed saved plan
+        if: inputs.apply
+        working-directory: infra/aws/app
+        run: terraform apply -input=false "$RUNNER_TEMP/app.tfplan"
+
+      - name: Resolve one-shot task network
+        if: inputs.apply
+        id: runtime
+        working-directory: infra/aws/app
+        shell: bash
+        run: |
+          subnets="$(terraform output -json ecs_task_subnet_ids | jq -r 'join(",")')"
+          security_group="$(terraform output -raw ecs_task_security_group_id)"
+          if [[ "$(terraform output -raw ecs_assign_public_ip)" == "true" ]]; then
+            public_ip="ENABLED"
+          else
+            public_ip="DISABLED"
+          fi
+          echo "cluster=$(terraform output -raw ecs_cluster_name)" >> "$GITHUB_OUTPUT"
+          echo "network=awsvpcConfiguration={subnets=[${subnets}],securityGroups=[${security_group}],assignPublicIp=${public_ip}}" >> "$GITHUB_OUTPUT"
+          echo "bootstrap=$(terraform output -raw database_bootstrap_task_definition_arn)" >> "$GITHUB_OUTPUT"
+          echo "migration=$(terraform output -raw migration_task_definition_arn)" >> "$GITHUB_OUTPUT"
+
+      - name: Run database role bootstrap task
+        if: inputs.apply
+        id: bootstrap-task
+        shell: bash
+        run: |
+          task_arn="$(aws ecs run-task \
+            --cluster '${{ steps.runtime.outputs.cluster }}' \
+            --task-definition '${{ steps.runtime.outputs.bootstrap }}' \
+            --launch-type FARGATE \
+            --network-configuration '${{ steps.runtime.outputs.network }}' \
+            --query 'tasks[0].taskArn' \
+            --output text)"
+          test "$task_arn" != "None"
+          aws ecs wait tasks-stopped --cluster '${{ steps.runtime.outputs.cluster }}' --tasks "$task_arn"
+          exit_code="$(aws ecs describe-tasks --cluster '${{ steps.runtime.outputs.cluster }}' \
+            --tasks "$task_arn" --query 'tasks[0].containers[0].exitCode' --output text)"
+          test "$exit_code" = "0"
+
+      - name: Run Alembic migration task
+        if: inputs.apply
+        shell: bash
+        run: |
+          task_arn="$(aws ecs run-task \
+            --cluster '${{ steps.runtime.outputs.cluster }}' \
+            --task-definition '${{ steps.runtime.outputs.migration }}' \
+            --launch-type FARGATE \
+            --network-configuration '${{ steps.runtime.outputs.network }}' \
+            --query 'tasks[0].taskArn' \
+            --output text)"
+          test "$task_arn" != "None"
+          aws ecs wait tasks-stopped --cluster '${{ steps.runtime.outputs.cluster }}' --tasks "$task_arn"
+          exit_code="$(aws ecs describe-tasks --cluster '${{ steps.runtime.outputs.cluster }}' \
+            --tasks "$task_arn" --query 'tasks[0].containers[0].exitCode' --output text)"
+          test "$exit_code" = "0"
+
+      - name: Set up Node 22
+        if: inputs.apply
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build Cognito-enabled static frontend
+        if: inputs.apply
+        working-directory: frontend
+        shell: bash
+        run: |
+          npm ci
+          export AUTH_MODE=oidc
+          export API_BASE_URL=""
+          export OIDC_AUTHORITY="$(terraform -chdir=../infra/aws/app output -raw cognito_issuer)"
+          export OIDC_CLIENT_ID="$(terraform -chdir=../infra/aws/app output -raw cognito_app_client_id)"
+          export OIDC_REDIRECT_URI="$(terraform -chdir=../infra/aws/app output -raw cloudfront_url)"
+          export OIDC_POST_LOGOUT_REDIRECT_URI="$OIDC_REDIRECT_URI"
+          export OIDC_MANAGED_LOGIN_DOMAIN="$(terraform -chdir=../infra/aws/app output -raw cognito_managed_login_domain)"
+          npm run build
+
+      - name: Upload private frontend assets
+        if: inputs.apply
+        shell: bash
+        run: |
+          bucket="$(terraform -chdir=infra/aws/app output -raw frontend_bucket_name)"
+          aws s3 sync frontend/dist "s3://${bucket}" \
+            --delete \
+            --exclude index.html \
+            --cache-control 'public,max-age=31536000,immutable'
+          aws s3 cp frontend/dist/index.html "s3://${bucket}/index.html" \
+            --content-type text/html \
+            --cache-control 'no-cache,max-age=0,must-revalidate'
+
+      - name: Invalidate CloudFront shell
+        if: inputs.apply
+        shell: bash
+        run: |
+          distribution_id="$(terraform -chdir=infra/aws/app output -raw cloudfront_distribution_id)"
+          aws cloudfront create-invalidation --distribution-id "$distribution_id" --paths '/*'
+
+      - name: Smoke-check deployed application
+        if: inputs.apply
+        shell: bash
+        run: |
+          application_url="$(terraform -chdir=infra/aws/app output -raw cloudfront_url)"
+          curl --fail --silent --show-error --retry 8 --retry-delay 10 --output /dev/null "${application_url}/"
+          test "$(curl --fail --silent --show-error --retry 8 --retry-delay 10 "${application_url}/api/health")" = '{"status":"ok"}'
