@@ -97,6 +97,7 @@ class Settings(BaseSettings):
     database_pool_timeout_seconds: float = Field(default=5.0, gt=0, le=30)
     database_pool_size: int = Field(default=5, ge=1, le=20)
     database_max_overflow: int = Field(default=5, ge=0, le=20)
+    database_pool_recycle_seconds: int = Field(default=1_800, ge=60, le=86_400)
     query_max_rows: int = Field(default=500, ge=1)
     query_timeout_ms: int = Field(default=5_000, ge=1)
     dashboard_top_n: int = Field(default=10, ge=1, le=50)

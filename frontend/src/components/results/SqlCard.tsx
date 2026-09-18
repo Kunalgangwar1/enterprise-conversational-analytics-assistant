@@ -1,5 +1,8 @@
+import { lazy, Suspense } from "react";
+
 import type { SqlExecutionResult, SqlPayload } from "../../api/types";
-import { SqlResultCard } from "./SqlResultCard";
+
+const SqlResultCard = lazy(() => import("./SqlResultCard"));
 
 interface SqlCardProps {
   payload: SqlPayload;
@@ -23,7 +26,11 @@ export function SqlCard({ payload, result, executing, onRun }: SqlCardProps) {
       <button className="primary-button" type="button" onClick={onRun} disabled={executing}>
         {executing ? "Running…" : "Run query"}
       </button>
-      {result && <SqlResultCard result={result} />}
+      {result && (
+        <Suspense fallback={<p role="status">Loading result visualization…</p>}>
+          <SqlResultCard result={result} />
+        </Suspense>
+      )}
     </section>
   );
 }

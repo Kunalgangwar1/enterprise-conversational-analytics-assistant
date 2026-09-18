@@ -5,7 +5,7 @@ analytics system. It uses synthetic healthcare examples only. Proprietary code, 
 patient/member data, and credentials must never be committed.
 
 `ARCHITECTURE_REPO_RUNBOOK.md` is the primary reference for the intended system. The implementation
-is complete through Phase 28. Phase 18 connects specialist workflows through a thin chat
+is complete through Phase 29. Phase 18 connects specialist workflows through a thin chat
 orchestrator and React One UI, Phase 19 adds the deterministic AI Dashboard, and Phase 20 adds a
 sidecar evaluation/regression harness. Phase 21 adds provider-neutral authentication, explicit
 RBAC, subject-owned sessions, and deterministic self-access inspection. Phases 22-23 add shared
@@ -135,6 +135,14 @@ tests. See [`docs/observability.md`](docs/observability.md) and
 Phase 28 provides bounded provider/database/Redis behavior, dependency-aware readiness, safe
 degradation, and focused failure validation. See [`docs/reliability.md`](docs/reliability.md) and
 [`ADR-028`](docs/decisions/ADR-028-reliability.md).
+
+## Performance and scalability
+
+Phase 29 provides a pinned, provider-free Locust harness, reviewed artifact format, database
+connection budgeting, frontend bundle improvements, and optional disabled-by-default ECS target
+tracking. See [`docs/performance.md`](docs/performance.md) and
+[`ADR-029`](docs/decisions/ADR-029-performance-scalability.md). Live AWS capacity validation remains
+deferred until deployment.
 
 ## Database setup
 

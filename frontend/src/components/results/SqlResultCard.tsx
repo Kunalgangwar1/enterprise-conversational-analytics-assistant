@@ -17,3 +17,5 @@ export function SqlResultCard({ result }: { result: SqlExecutionResult }) {
     </section>
   );
 }
+
+export default SqlResultCard;

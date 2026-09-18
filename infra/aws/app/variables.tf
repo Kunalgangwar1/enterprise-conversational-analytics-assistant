@@ -62,9 +62,145 @@ variable "ecs_memory" {
 }
 
 variable "ecs_desired_count" {
-  description = "Initial backend task count; autoscaling is deliberately deferred."
+  description = "Initial backend task count."
   type        = number
   default     = 1
+}
+
+variable "enable_ecs_autoscaling" {
+  description = "Create bounded CPU and memory target-tracking policies for the backend service."
+  type        = bool
+  default     = false
+}
+
+variable "ecs_min_capacity" {
+  description = "Minimum backend task count when autoscaling is enabled."
+  type        = number
+  default     = 1
+  validation {
+    condition     = var.ecs_min_capacity >= 1 && var.ecs_min_capacity <= 10
+    error_message = "ecs_min_capacity must be between 1 and 10."
+  }
+}
+
+variable "ecs_max_capacity" {
+  description = "Maximum backend task count when autoscaling is enabled."
+  type        = number
+  default     = 3
+  validation {
+    condition     = var.ecs_max_capacity >= 1 && var.ecs_max_capacity <= 20
+    error_message = "ecs_max_capacity must be between 1 and 20."
+  }
+}
+
+variable "ecs_autoscaling_cpu_target" {
+  description = "Target average ECS service CPU utilization."
+  type        = number
+  default     = 65
+  validation {
+    condition     = var.ecs_autoscaling_cpu_target >= 10 && var.ecs_autoscaling_cpu_target <= 90
+    error_message = "ecs_autoscaling_cpu_target must be between 10 and 90."
+  }
+}
+
+variable "ecs_autoscaling_memory_target" {
+  description = "Target average ECS service memory utilization."
+  type        = number
+  default     = 70
+  validation {
+    condition     = var.ecs_autoscaling_memory_target >= 10 && var.ecs_autoscaling_memory_target <= 90
+    error_message = "ecs_autoscaling_memory_target must be between 10 and 90."
+  }
+}
+
+variable "ecs_scale_in_cooldown_seconds" {
+  description = "Target-tracking scale-in cooldown."
+  type        = number
+  default     = 300
+  validation {
+    condition     = var.ecs_scale_in_cooldown_seconds >= 0 && var.ecs_scale_in_cooldown_seconds <= 3600
+    error_message = "ecs_scale_in_cooldown_seconds must be between 0 and 3600."
+  }
+}
+
+variable "ecs_scale_out_cooldown_seconds" {
+  description = "Target-tracking scale-out cooldown."
+  type        = number
+  default     = 60
+  validation {
+    condition     = var.ecs_scale_out_cooldown_seconds >= 0 && var.ecs_scale_out_cooldown_seconds <= 3600
+    error_message = "ecs_scale_out_cooldown_seconds must be between 0 and 3600."
+  }
+}
+
+variable "backend_worker_processes" {
+  description = "Uvicorn worker processes per ECS task."
+  type        = number
+  default     = 1
+  validation {
+    condition     = var.backend_worker_processes >= 1 && var.backend_worker_processes <= 8
+    error_message = "backend_worker_processes must be between 1 and 8."
+  }
+}
+
+variable "database_pool_size" {
+  description = "Bounded SQLAlchemy pool size per worker and engine."
+  type        = number
+  default     = 5
+  validation {
+    condition     = var.database_pool_size >= 1 && var.database_pool_size <= 20
+    error_message = "database_pool_size must be between 1 and 20."
+  }
+}
+
+variable "database_max_overflow" {
+  description = "Bounded SQLAlchemy overflow per worker and engine."
+  type        = number
+  default     = 5
+  validation {
+    condition     = var.database_max_overflow >= 0 && var.database_max_overflow <= 20
+    error_message = "database_max_overflow must be between 0 and 20."
+  }
+}
+
+variable "database_pool_recycle_seconds" {
+  description = "Age at which pooled PostgreSQL connections are recycled."
+  type        = number
+  default     = 1800
+  validation {
+    condition     = var.database_pool_recycle_seconds >= 60 && var.database_pool_recycle_seconds <= 86400
+    error_message = "database_pool_recycle_seconds must be between 60 and 86400."
+  }
+}
+
+variable "database_pools_per_worker" {
+  description = "Conservative pool multiplier covering application, dashboard, and SQL executors."
+  type        = number
+  default     = 3
+  validation {
+    condition     = var.database_pools_per_worker >= 1 && var.database_pools_per_worker <= 5
+    error_message = "database_pools_per_worker must be between 1 and 5."
+  }
+}
+
+variable "database_connection_budget" {
+  description = "Maximum PostgreSQL connections allocated to backend application pools."
+  type        = number
+  default     = 100
+  validation {
+    condition     = var.database_connection_budget >= 10 && var.database_connection_budget <= 10000
+    error_message = "database_connection_budget must be between 10 and 10000."
+  }
+}
+
+variable "database_connection_reserve" {
+  description = "Connections reserved for migrations, administration, and recovery."
+  type        = number
+  default     = 10
+  validation {
+    condition     = var.database_connection_reserve >= 0 && var.database_connection_reserve <= 1000
+    error_message = "database_connection_reserve must be between 0 and 1000."
+  }
 }
 
 variable "log_retention_days" {

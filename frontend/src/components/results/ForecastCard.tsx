@@ -77,3 +77,5 @@ export function ForecastCard({ forecast }: { forecast: ForecastPayload }) {
     </section>
   );
 }
+
+export default ForecastCard;

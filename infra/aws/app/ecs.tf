@@ -44,6 +44,9 @@ locals {
     { name = "SESSION_STORE_BACKEND", value = "redis" },
     { name = "RATE_LIMIT_ENABLED", value = "true" },
     { name = "RATE_LIMIT_BACKEND", value = "redis" },
+    { name = "DATABASE_POOL_SIZE", value = tostring(var.database_pool_size) },
+    { name = "DATABASE_MAX_OVERFLOW", value = tostring(var.database_max_overflow) },
+    { name = "DATABASE_POOL_RECYCLE_SECONDS", value = tostring(var.database_pool_recycle_seconds) },
     { name = "KNOWLEDGE_CATALOG_DIR", value = "/app/backend/data/knowledge_catalog" },
     { name = "DATA_QUALITY_DIR", value = "/app/backend/data/data_quality" },
     { name = "ARTIFACTS_OUTPUT_DIR", value = "/tmp/eca-artifacts" },
@@ -107,6 +110,7 @@ resource "aws_ecs_task_definition" "backend" {
       name         = "backend"
       image        = local.backend_image
       essential    = true
+      command      = ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", tostring(var.backend_worker_processes)]
       environment  = concat(local.common_environment, local.observability_environment)
       secrets      = local.runtime_secrets
       dependsOn = var.observability_enabled ? [{

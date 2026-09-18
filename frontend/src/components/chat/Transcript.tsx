@@ -1,12 +1,13 @@
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 
 import type { UiFeatureFlags } from "../../api/types";
 import type { TranscriptItem } from "../../state/chat";
 import { Citations } from "../results/Citations";
 import { DiscoveryCard } from "../results/DiscoveryCard";
-import { ForecastCard } from "../results/ForecastCard";
 import { ResultTable } from "../results/ResultTable";
 import { SqlCard } from "../results/SqlCard";
+
+const ForecastCard = lazy(() => import("../results/ForecastCard"));
 
 interface TranscriptProps {
   messages: TranscriptItem[];
@@ -48,7 +49,11 @@ export function Transcript({ messages, flags, onRunSql, onFollowUp }: Transcript
                 onRun={() => onRunSql(item.id)}
               />
             )}
-            {response.response_type === "forecast" && <ForecastCard forecast={response.payload} />}
+            {response.response_type === "forecast" && (
+              <Suspense fallback={<p role="status">Loading forecast visualization…</p>}>
+                <ForecastCard forecast={response.payload} />
+              </Suspense>
+            )}
             {response.response_type === "data_discovery" && (
               <DiscoveryCard payload={response.payload} />
             )}
