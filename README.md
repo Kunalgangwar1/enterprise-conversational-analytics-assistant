@@ -1,36 +1,124 @@
 # Enterprise Conversational Analytics Assistant
 
-This repository is a clean-room, learning-focused reconstruction of an enterprise conversational
-analytics system. It uses synthetic healthcare examples only. Proprietary code, production data,
-patient/member data, and credentials must never be committed.
+[![CI](https://github.com/Kunalgangwar1/enterprise-conversational-analytics-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/Kunalgangwar1/enterprise-conversational-analytics-assistant/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 
-`ARCHITECTURE_REPO_RUNBOOK.md` is the primary reference for the intended system. The implementation
-is complete through Phase 29. Phase 18 connects specialist workflows through a thin chat
-orchestrator and React One UI, Phase 19 adds the deterministic AI Dashboard, and Phase 20 adds a
-sidecar evaluation/regression harness. Phase 21 adds provider-neutral authentication, explicit
-RBAC, subject-owned sessions, and deterministic self-access inspection. Phases 22-23 add shared
-Redis state and security hardening; Phase 24 adds production-capable images and a local Compose
-integration stack. Phase 25 adds cloud-independent GitHub Actions quality gates and versioned GHCR
-artifact delivery. Phase 26 adds a Terraform-managed AWS pre-deployment architecture without
-creating live resources automatically. Phase 27A adds structured logs, request correlation,
-provider-neutral OpenTelemetry metrics/traces, a local collector overlay, and conditional AWS ADOT,
-CloudWatch, and X-Ray infrastructure; live Phase 27B validation awaits AWS deployment.
+An end-to-end conversational analytics platform that turns natural-language questions into safe,
+explainable data workflows. It combines NLP-to-SQL, specialist retrieval, deterministic forecasting,
+interactive dashboards, role-based access control, and production-oriented observability in a single
+React and FastAPI application.
 
-## Repository layout
+> **Important:** This is a clean-room, learning-focused project built with synthetic healthcare
+> examples. It does not contain proprietary code, production credentials, or real patient/member
+> data. Do not use real sensitive data in the sample environment.
 
-```text
-backend/    FastAPI, application workflows, persistence, and tests
-frontend/   React/TypeScript One UI and tests
-docs/       Architecture, component notes, and ADRs
-scripts/    Task-specific utilities
+## Highlights
+
+- **Natural language to SQL** with metadata-aware generation, validation, rewriting, and a separate
+  read-only database connection.
+- **Specialist assistant modes** for data discovery, knowledge catalog search, data quality,
+  semantic exploration, forecasting, and access inspection.
+- **Grounded answers** with retrieved evidence and citations.
+- **Interactive analytics** with result tables, charts, follow-up prompts, and an aggregate dashboard.
+- **Multi-provider AI** through Gemini and Azure OpenAI adapters, with deterministic modes available
+  when no model credentials are configured.
+- **Enterprise controls** including OIDC-ready authentication, RBAC, subject-owned sessions, request
+  limits, security headers, privacy-safe logging, and SQL safety boundaries.
+- **Production foundations** with Docker Compose, GitHub Actions, Terraform for AWS, OpenTelemetry,
+  evaluation suites, and performance tests.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    U[User] --> UI[React One UI]
+    UI --> API[FastAPI application]
+    API --> AUTH[Authentication and RBAC]
+    API --> ORCH[Chat orchestrator]
+    ORCH --> SQL[NLP-to-SQL]
+    ORCH --> RET[Retrieval specialists]
+    ORCH --> FC[Forecasting]
+    SQL --> PG[(PostgreSQL)]
+    RET --> CAT[(Knowledge and metadata)]
+    ORCH --> LLM[Gemini or Azure OpenAI]
+    API --> REDIS[(Redis sessions and rate limits)]
+    API -. telemetry .-> OTEL[OpenTelemetry]
 ```
 
-## Local full-stack startup
+The frontend never receives database or model-provider credentials. Generated SQL is parsed and
+validated on the backend, and execution uses a separately configured `SELECT`-only database role.
+See [Architecture](docs/architecture.md) and [Security hardening](docs/security-hardening.md) for the
+full design.
 
-Python 3.11+, Node.js 18+, npm, and a local PostgreSQL instance are expected. Configure local
-backend values from `.env.example`; never place secrets in source control.
+## Technology stack
 
-Local development uses a configured server-side identity and requires no browser token:
+| Layer | Technologies |
+| --- | --- |
+| Frontend | React 19, TypeScript, webpack, Recharts |
+| Backend | Python 3.11+, FastAPI, Pydantic, SQLAlchemy, LangGraph |
+| AI and retrieval | Gemini, Azure OpenAI, LanceDB, hierarchical and vector retrieval |
+| Data and state | PostgreSQL 16, Redis 7 |
+| Delivery | Docker Compose, GitHub Actions, Terraform, AWS ECS/Fargate |
+| Operations | OpenTelemetry, ADOT, CloudWatch, X-Ray, Locust |
+
+## Quick start with Docker
+
+### Prerequisites
+
+- Git
+- Docker Engine with the Compose plugin
+
+### Run the application
+
+```bash
+git clone https://github.com/Kunalgangwar1/enterprise-conversational-analytics-assistant.git
+cd enterprise-conversational-analytics-assistant
+
+cp .env.docker.example .env.docker
+# Edit .env.docker and replace every placeholder password.
+
+docker compose --env-file .env.docker up -d --build --wait
+docker compose --env-file .env.docker run --rm seed
+```
+
+Open the application at [http://localhost:5173](http://localhost:5173):
+
+- Chat: `http://localhost:5173/#/`
+- Dashboard: `http://localhost:5173/#/dashboard`
+- API documentation: `http://localhost:8000/docs`
+
+The seed command is optional and loads deterministic synthetic data. Model-backed features require
+provider settings in `.env.docker`; deterministic features such as Data Discovery and the Dashboard
+work without model credentials.
+
+Stop the stack without deleting its named volumes:
+
+```bash
+docker compose --env-file .env.docker down
+```
+
+For health checks, logs, database roles, and safe volume-reset instructions, see the
+[Docker guide](docs/docker.md).
+
+## Local development
+
+### Prerequisites
+
+- Python 3.11+
+- [uv](https://docs.astral.sh/uv/)
+- Node.js 18.18+ and npm
+- PostgreSQL 16
+- Redis 7 (when using shared sessions or distributed rate limiting)
+
+Copy the backend environment template and configure at least the database URLs and development
+identity:
+
+```bash
+cp .env.example .env
+```
 
 ```dotenv
 APP_ENV=development
@@ -39,135 +127,71 @@ AUTH_DEV_SUBJECT=dev-user
 AUTH_DEV_ROLES=analyst
 ```
 
-Development authentication is rejected outside local/development/test environments.
-Production-style `AUTH_MODE=oidc` verifies signed bearer JWTs using configured issuer JWKS and can
-later point at Cognito without changing authorization logic. Phase 21 stores no passwords and
-requires no AWS account.
+Development authentication is intentionally rejected outside development, local, and test
+environments. For production-style authentication, configure `AUTH_MODE=oidc` and the issuer,
+audience, client, and JWKS settings described in the
+[authentication guide](docs/authentication-authorization.md).
 
-Terminal 1:
+### Backend
+
+From `backend/`:
 
 ```bash
-source .venv/bin/activate
-cd backend
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+uv sync --frozen --extra dev
+uv run alembic upgrade head
+uv run python -m app.db.seed
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Terminal 2:
+### Frontend
+
+In another terminal, from `frontend/`:
 
 ```bash
-cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-The webpack development server proxies `/api` and `/chat` to the backend on port 8000. Open:
+The development server runs on port `5173` and proxies `/api` and `/chat` to the backend on port
+`8000`.
 
-- Chat: `http://localhost:5173/#/`
-- Dashboard: `http://localhost:5173/#/dashboard`
+## AI provider configuration
 
-Both surfaces run in the same React application and backend processes.
+Set `LLM_PROVIDER` to the provider used for generated responses:
 
-The frontend needs no Gemini, Azure, AWS, or database credentials. LLM-backed backend workflows
-require their selected provider configuration, while deterministic modes such as Data Discovery
-remain usable without model credentials.
-The aggregate Dashboard also requires no model or AWS credentials.
-
-## Docker quick start
-
-Docker Compose provides PostgreSQL, Redis, one-shot migrations, the FastAPI backend, and the React
-production frontend. It is local integration infrastructure, not the final AWS topology.
-
-```bash
-cp .env.docker.example .env.docker
-# Replace every local-only placeholder password in .env.docker.
-docker compose --env-file .env.docker up -d --build --wait
-docker compose --env-file .env.docker run --rm seed  # optional synthetic data
+```dotenv
+# Gemini
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=your-api-key
+GEMINI_LLM_MODEL=your-model-name
 ```
 
-Open `http://localhost:5173/#/`. Stop without deleting named volumes using `docker compose
---env-file .env.docker down`. See [`docs/docker.md`](docs/docker.md) for architecture, role setup,
-health checks, logs, seeding, and intentional volume reset instructions.
-
-## Evaluation
-
-From `backend/`, run the deterministic network-free profile:
-
-```bash
-python -m app.evaluation.run --profile offline
+```dotenv
+# Azure OpenAI
+LLM_PROVIDER=azure_openai
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
+AZURE_OPENAI_API_KEY=your-api-key
+AZURE_OPENAI_DEPLOYMENT=your-deployment-name
 ```
 
-Run against the local synthetic PostgreSQL database, or optionally the configured live provider:
+Keep all provider keys on the backend and out of source control. Embedding configuration is
+independent of the response-generation provider. See [LLM configuration](docs/llm.md) and
+[Knowledge Catalog](docs/knowledge-catalog.md) for details.
 
-```bash
-python -m app.evaluation.run --profile integration
-python -m app.evaluation.run --profile live
-```
-
-Compare a reviewed baseline with `--compare-baseline evals/baselines/offline-v1.json`. Live runs are
-never started automatically and do not fall back to fakes. See [`docs/evaluation.md`](docs/evaluation.md).
-
-## CI/CD
-
-Pull requests and `main` pushes run backend, PostgreSQL/Redis integration, frontend, evaluation,
-security-audit, Compose, and Docker-build gates. Python 3.11 matches the backend image; Python 3.14
-has a weekly/manual compatibility workflow. Semantic version tags publish separate backend and
-frontend images to GHCR using the automatic least-privilege `GITHUB_TOKEN`. Normal CI requires no
-application or cloud secrets and never runs live LLM evaluation or AWS deployment. See
-[`docs/ci-cd.md`](docs/ci-cd.md).
-
-## AWS deployment
-
-Phase 26 provides review-first Terraform for CloudFront, private S3, an internal-ALB VPC origin,
-ECS Fargate, private RDS PostgreSQL, TLS Valkey, Cognito PKCE login, Secrets Manager, ECR, and GitHub
-OIDC deployment. It is cost-bearing infrastructure: no apply or live deployment is performed by the
-repository itself. See [`docs/aws-deployment.md`](docs/aws-deployment.md).
-
-## Observability
-
-Phase 27A provides privacy-safe JSON logging, bounded request correlation, manual OpenTelemetry
-metrics/traces at central boundaries, an optional local Collector Contrib overlay, and conditional
-ADOT/CloudWatch/X-Ray Terraform. Observability is disabled by default and never required for normal
-tests. See [`docs/observability.md`](docs/observability.md) and
-[`ADR-027`](docs/decisions/ADR-027-observability.md).
-
-## Reliability
-
-Phase 28 provides bounded provider/database/Redis behavior, dependency-aware readiness, safe
-degradation, and focused failure validation. See [`docs/reliability.md`](docs/reliability.md) and
-[`ADR-028`](docs/decisions/ADR-028-reliability.md).
-
-## Performance and scalability
-
-Phase 29 provides a pinned, provider-free Locust harness, reviewed artifact format, database
-connection budgeting, frontend bundle improvements, and optional disabled-by-default ECS target
-tracking. See [`docs/performance.md`](docs/performance.md) and
-[`ADR-029`](docs/decisions/ADR-029-performance-scalability.md). Live AWS capacity validation remains
-deferred until deployment.
-
-## Database setup
-
-The documented source architecture uses Databricks SQL. This reconstruction uses PostgreSQL as its
-local relational and analytical substitute. From `backend/`:
-
-```bash
-alembic upgrade head
-alembic current
-python -m app.db.seed
-```
-
-`DATABASE_URL` is for migrations and seeding. The query path requires a separate SELECT-only
-`QUERY_DATABASE_URL`; it never falls back to the write-capable URL. See
-[`docs/database.md`](docs/database.md).
-
-## Verification
+## Testing and quality checks
 
 Backend, from `backend/`:
 
 ```bash
-pytest -m "not integration and not live_llm"
-pytest -m integration
-ruff check .
-ruff format --check .
+uv run pytest -m "not integration and not live_llm"
+uv run ruff check .
+uv run ruff format --check .
+```
+
+With the isolated PostgreSQL and Redis test services configured:
+
+```bash
+uv run pytest -m integration
 ```
 
 Frontend, from `frontend/`:
@@ -179,7 +203,65 @@ npm run lint
 npm run build
 ```
 
-The main APIs are documented in [`docs/api.md`](docs/api.md), the current architecture in
-[`docs/architecture.md`](docs/architecture.md), authentication/RBAC in
-[`docs/authentication-authorization.md`](docs/authentication-authorization.md), and its decision in
-[`ADR-021`](docs/decisions/ADR-021-authentication-authorization-rbac.md).
+Run the deterministic, network-free evaluation profile from `backend/`:
+
+```bash
+uv run python -m app.evaluation.run --profile offline
+```
+
+Additional `integration` and `live` evaluation profiles are available but are never started
+automatically. See the [evaluation guide](docs/evaluation.md).
+
+## Repository structure
+
+```text
+.
+├── backend/        FastAPI application, domain workflows, migrations, and tests
+├── frontend/       React/TypeScript application and tests
+├── docs/           Architecture guides and decision records
+├── infra/aws/      Review-first Terraform for AWS deployment
+├── observability/  Local OpenTelemetry Collector configuration
+├── scripts/        Evaluation, performance, and operational utilities
+├── compose.yaml    Local integration stack
+└── .github/        CI, compatibility, release, and deployment workflows
+```
+
+## Documentation
+
+| Topic | Guide |
+| --- | --- |
+| System design | [Architecture](docs/architecture.md) |
+| API endpoints | [Backend API](docs/api.md) |
+| Database and safe query execution | [Database](docs/database.md) |
+| Authentication and authorization | [Authentication and RBAC](docs/authentication-authorization.md) |
+| NLP-to-SQL | [NLP-to-SQL](docs/nlp2sql.md) |
+| Specialist retrieval | [Knowledge Catalog](docs/knowledge-catalog.md), [Data Discovery](docs/data-discovery.md), [Data Quality](docs/data-quality.md) |
+| Forecasting and dashboard | [Forecasting](docs/forecasting.md), [AI Dashboard](docs/ai-dashboard.md) |
+| Privacy and security | [Privacy](docs/privacy.md), [Security hardening](docs/security-hardening.md) |
+| Reliability and observability | [Reliability](docs/reliability.md), [Observability](docs/observability.md) |
+| Performance and evaluation | [Performance](docs/performance.md), [Evaluation](docs/evaluation.md) |
+| Delivery | [CI/CD](docs/ci-cd.md), [AWS deployment](docs/aws-deployment.md) |
+
+Architecture decisions are recorded in [`docs/decisions/`](docs/decisions/).
+
+## Deployment
+
+The repository includes review-first Terraform for an AWS deployment using CloudFront, private S3,
+an internal Application Load Balancer, ECS Fargate, RDS PostgreSQL, ElastiCache/Valkey, Cognito,
+Secrets Manager, ECR, and GitHub OIDC.
+
+Infrastructure is cost-bearing and is never applied automatically. Review the
+[AWS deployment guide](docs/aws-deployment.md), example variable files, IAM permissions, and expected
+costs before running Terraform.
+
+## Contributing
+
+Contributions and issue reports are welcome. Before opening a pull request:
+
+1. Keep examples and fixtures synthetic.
+2. Never commit `.env` files, credentials, generated secrets, or sensitive data.
+3. Run the backend and frontend checks listed above.
+4. Update the relevant documentation or architecture decision when behavior changes.
+
+GitHub Actions repeats the backend, integration, frontend, evaluation, security, Compose, and image
+build checks on pull requests and pushes to `main`.
